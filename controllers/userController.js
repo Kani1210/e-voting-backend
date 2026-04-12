@@ -1,5 +1,15 @@
 const pool = require("../db/db");
 
+/* GET USERS */
+exports.getUsers = async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM users");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 /* GET USER */
 exports.getUser = async (req, res) => {
   try {
@@ -16,20 +26,14 @@ exports.getUser = async (req, res) => {
   }
 };
 
-/* GET ALL USERS */
-exports.getUsers = async (req, res) => {
-  const result = await pool.query("SELECT * FROM users");
-  res.json(result.rows);
-};
-
 /* ADD IRIS */
 exports.addIris = async (req, res) => {
   try {
-    const userId = req.user.userId; // 🔐 from token
+    const userId = req.user?.userId;
     const { iris } = req.body;
 
-    if (!iris) {
-      return res.status(400).json({ message: "Iris required" });
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     await pool.query(
@@ -46,20 +50,11 @@ exports.addIris = async (req, res) => {
 /* ADD FINGER */
 exports.addFinger = async (req, res) => {
   try {
-
-    // 🔥 FIX ADDED
-    if (!req.user || !req.user.userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized (token missing or invalid)"
-      });
-    }
-
-    const userId = req.user.userId;
+    const userId = req.user?.userId;
     const { finger } = req.body;
 
-    if (!finger) {
-      return res.status(400).json({ message: "Finger required" });
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     await pool.query(
@@ -68,16 +63,15 @@ exports.addFinger = async (req, res) => {
     );
 
     res.json({ success: true, message: "Fingerprint saved ✅" });
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-/* VERIFY BIOMETRIC */
+/* VERIFY */
 exports.verifyBiometric = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user?.userId;
     const { iris, finger } = req.body;
 
     const result = await pool.query(
@@ -91,14 +85,12 @@ exports.verifyBiometric = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (
-      user.iris_template === iris &&
-      user.finger_template === finger
-    ) {
+    if (user.iris_template === iris && user.finger_template === finger) {
       return res.json({ success: true, message: "Verified ✅" });
-    } else {
-      return res.json({ success: false, message: "Verification failed ❌" });
     }
+
+    res.json({ success: false, message: "Verification failed ❌" });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
