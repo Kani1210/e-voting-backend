@@ -1,20 +1,5 @@
 const pool = require("../db/db");
 
-/* ============================================================
-   HOW TO KNOW WHICH FIELD TO USE:
-   Run this in your browser console:
-     const token = localStorage.getItem("token");
-     const payload = JSON.parse(atob(token.split(".")[1]));
-     console.log(payload);
-
-   If it shows { id: 5 }       → userId = req.user?.id
-   If it shows { user_id: 5 }  → userId = req.user?.user_id
-   If it shows { userId: 5 }   → userId = req.user?.userId
-   
-   This file uses req.user?.id  (most common)
-   Change all 3 places below if your field name is different.
-============================================================ */
-
 /* GET USERS */
 exports.getUsers = async (req, res) => {
   try {
@@ -33,6 +18,9 @@ exports.getUser = async (req, res) => {
       "SELECT user_id, name, email FROM users WHERE user_id=$1",
       [id]
     );
+    if (!result.rows[0]) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -42,25 +30,28 @@ exports.getUser = async (req, res) => {
 /* ADD IRIS */
 exports.addIris = async (req, res) => {
   try {
-    // 🔥 FIX: read whichever field your JWT uses
-    const userId = req.user?.id ?? req.user?.userId ?? req.user?.user_id;
+    // JWT is signed with { userId: user.user_id } in authController
+    const userId = req.user?.userId;
     const { iris } = req.body;
 
-    // DEBUG — check your Render logs to confirm userId is not undefined
-    console.log("addIris → req.user:", req.user, "| userId:", userId);
+    console.log("addIris → userId:", userId, "| iris length:", iris?.length);
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized — userId missing from token" });
+      return res.status(401).json({ success: false, message: "Unauthorized — not logged in" });
     }
-
     if (!iris) {
-      return res.status(400).json({ success: false, message: "iris field is required" });
+      return res.status(400).json({ success: false, message: "iris field is required in request body" });
     }
 
-    await pool.query(
-      "UPDATE users SET iris_template=$1 WHERE user_id=$2",
+    const result = await pool.query(
+      "UPDATE users SET iris_template=$1 WHERE user_id=$2 RETURNING user_id",
       [iris, userId]
     );
+
+    // Check if any row was actually updated
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, message: "User not found in database" });
+    }
 
     res.json({ success: true, message: "Iris saved ✅" });
   } catch (err) {
@@ -72,26 +63,28 @@ exports.addIris = async (req, res) => {
 /* ADD FINGER */
 exports.addFinger = async (req, res) => {
   try {
-    // 🔥 FIX: read whichever field your JWT uses
-    const userId = req.user?.id ?? req.user?.userId ?? req.user?.user_id;
+    // JWT is signed with { userId: user.user_id } in authController
+    const userId = req.user?.userId;
     const { finger } = req.body;
 
-    // DEBUG — check your Render logs to confirm userId is not undefined
-    console.log("addFinger → req.user:", req.user, "| userId:", userId);
-    console.log("finger received, length:", finger?.length);
+    console.log("addFinger → userId:", userId, "| finger length:", finger?.length);
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized — userId missing from token" });
+      return res.status(401).json({ success: false, message: "Unauthorized — not logged in" });
     }
-
     if (!finger) {
-      return res.status(400).json({ success: false, message: "finger field is required" });
+      return res.status(400).json({ success: false, message: "finger field is required in request body" });
     }
 
-    await pool.query(
-      "UPDATE users SET finger_template=$1 WHERE user_id=$2",
+    const result = await pool.query(
+      "UPDATE users SET finger_template=$1 WHERE user_id=$2 RETURNING user_id",
       [finger, userId]
     );
+
+    // Check if any row was actually updated
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, message: "User not found in database" });
+    }
 
     res.json({ success: true, message: "Fingerprint saved ✅" });
   } catch (err) {
@@ -103,14 +96,14 @@ exports.addFinger = async (req, res) => {
 /* VERIFY BIOMETRIC */
 exports.verifyBiometric = async (req, res) => {
   try {
-    // 🔥 FIX: read whichever field your JWT uses
-    const userId = req.user?.id ?? req.user?.userId ?? req.user?.user_id;
+    // JWT is signed with { userId: user.user_id } in authController
+    const userId = req.user?.userId;
     const { iris, finger } = req.body;
 
     console.log("verifyBiometric → userId:", userId);
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized — userId missing from token" });
+      return res.status(401).json({ success: false, message: "Unauthorized — not logged in" });
     }
 
     const result = await pool.query(
@@ -124,11 +117,14 @@ exports.verifyBiometric = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    if (user.iris_template === iris && user.finger_template === finger) {
+    const irisMatch   = iris   ? user.iris_template   === iris   : true;
+    const fingerMatch = finger ? user.finger_template === finger : true;
+
+    if (irisMatch && fingerMatch) {
       return res.json({ success: true, message: "Verified ✅" });
     }
 
-    res.json({ success: false, message: "Verification failed ❌" });
+    res.json({ success: false, message: "Biometric verification failed ❌" });
   } catch (err) {
     console.error("verifyBiometric error:", err.message);
     res.status(500).json({ success: false, error: err.message });
