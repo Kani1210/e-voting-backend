@@ -8,7 +8,10 @@ exports.register = async (req, res) => {
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: "name, email and password are required" });
+      return res.status(400).json({
+        success: false,
+        message: "name, email and password required",
+      });
     }
 
     const check = await pool.query(
@@ -17,7 +20,10 @@ exports.register = async (req, res) => {
     );
 
     if (check.rows.length > 0) {
-      return res.status(400).json({ success: false, message: "Email already exists" });
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists",
+      });
     }
 
     const userId = "USR" + Date.now();
@@ -30,15 +36,13 @@ exports.register = async (req, res) => {
       [userId, name, email, hashedPassword]
     );
 
-    res.json({
+    return res.json({
       success: true,
-      message: "Registered successfully ✅",
+      message: "Registered successfully",
       user: result.rows[0],
     });
-
   } catch (err) {
-    console.error("register error:", err.message);
-    res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
 
@@ -47,38 +51,39 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: "email and password are required" });
-    }
-
     const result = await pool.query(
       "SELECT * FROM users WHERE email=$1",
       [email]
     );
 
     if (result.rows.length === 0) {
-      return res.status(400).json({ success: false, message: "User not found" });
+      return res.status(400).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
     const user = result.rows[0];
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const match = await bcrypt.compare(password, user.password);
 
-    if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Invalid password" });
+    if (!match) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid password",
+      });
     }
 
-    // Sign JWT with userId — userController reads req.user.userId
     const token = jwt.sign(
       {
-        userId: user.user_id,   // ← this is what req.user.userId reads
+        userId: user.user_id,
         email: user.email,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }       // extended to 7 days so token doesn't expire during testing
+      { expiresIn: "7d" }
     );
 
-    res.json({
+    return res.json({
       success: true,
       token,
       user: {
@@ -87,9 +92,7 @@ exports.login = async (req, res) => {
         email: user.email,
       },
     });
-
   } catch (err) {
-    console.error("login error:", err.message);
-    res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 };

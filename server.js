@@ -8,34 +8,30 @@ const userRoutes = require("./routes/userRoutes");
 const app = express();
 
 /* =========================
-   CORS CONFIG (SAFE FOR FRONTEND)
+   CORS
 ========================= */
 app.use(cors({
-  origin: "*", // in production you can lock to your frontend URL
+  origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
 }));
 
 /* =========================
-   🔥 BODY LIMIT FIX (IMPORTANT)
+   BODY PARSER
 ========================= */
 app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-
-/* (OPTIONAL BUT SAFE) */
-app.use(express.text({ limit: "50mb" }));
 
 /* =========================
-   HEALTH CHECK ROUTE
+   HEALTH CHECK
 ========================= */
 app.get("/", (req, res) => {
-  res.json({ message: "API Running ✔" });
+  return res.json({ success: true, message: "API Running ✔" });
 });
 
 /* =========================
-   ROUTES
+   ROUTES MOUNTING (VERY IMPORTANT)
 ========================= */
 app.use("/auth", authRoutes);
-app.use("/users", userRoutes);
+app.use("/users", userRoutes); // 🔥 THIS MUST MATCH FRONTEND
 
 /* =========================
    START SERVER

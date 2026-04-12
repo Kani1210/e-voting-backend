@@ -1,46 +1,68 @@
 const pool = require("../db/db");
 
-/* GET USERS */
+/* =========================
+   GET USERS
+========================= */
 exports.getUsers = async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM users");
-    res.json(result.rows);
+    return res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
 
-/* GET USER */
+/* =========================
+   GET USER BY ID
+========================= */
 exports.getUser = async (req, res) => {
   try {
     const { id } = req.params;
+
     const result = await pool.query(
       "SELECT user_id, name, email FROM users WHERE user_id=$1",
       [id]
     );
+
     if (!result.rows[0]) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
-    res.json(result.rows[0]);
+
+    return res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
 
-/* ADD IRIS */
+/* =========================
+   ADD IRIS
+========================= */
 exports.addIris = async (req, res) => {
   try {
-    // JWT is signed with { userId: user.user_id } in authController
     const userId = req.user?.userId;
     const { iris } = req.body;
 
-    console.log("addIris → userId:", userId, "| iris length:", iris?.length);
+    console.log("🔥 addIris HIT");
+    console.log("USER:", userId);
+    console.log("IRIS LENGTH:", iris?.length);
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized — not logged in" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
+
     if (!iris) {
-      return res.status(400).json({ success: false, message: "iris field is required in request body" });
+      return res.status(400).json({
+        success: false,
+        message: "iris is required",
+      });
     }
 
     const result = await pool.query(
@@ -48,62 +70,93 @@ exports.addIris = async (req, res) => {
       [iris, userId]
     );
 
-    // Check if any row was actually updated
     if (result.rowCount === 0) {
-      return res.status(404).json({ success: false, message: "User not found in database" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
-    res.json({ success: true, message: "Iris saved ✅" });
+    return res.json({
+      success: true,
+      message: "Iris saved ✅",
+    });
   } catch (err) {
-    console.error("addIris error:", err.message);
-    res.status(500).json({ success: false, error: err.message });
+    console.error("addIris error:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
 
-/* ADD FINGER */
+/* =========================
+   ADD FINGER (FIXED)
+========================= */
 exports.addFinger = async (req, res) => {
   try {
-    // JWT is signed with { userId: user.user_id } in authController
     const userId = req.user?.userId;
-    const { finger } = req.body;
+    const { template } = req.body; // ✅ FIXED (was finger before)
 
-    console.log("addFinger → userId:", userId, "| finger length:", finger?.length);
+    console.log("🔥 addFinger HIT");
+    console.log("USER:", userId);
+    console.log("TEMPLATE LENGTH:", template?.length);
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized — not logged in" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
-    if (!finger) {
-      return res.status(400).json({ success: false, message: "finger field is required in request body" });
+
+    if (!template) {
+      return res.status(400).json({
+        success: false,
+        message: "template is required",
+      });
     }
 
     const result = await pool.query(
       "UPDATE users SET finger_template=$1 WHERE user_id=$2 RETURNING user_id",
-      [finger, userId]
+      [template, userId]
     );
 
-    // Check if any row was actually updated
     if (result.rowCount === 0) {
-      return res.status(404).json({ success: false, message: "User not found in database" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
-    res.json({ success: true, message: "Fingerprint saved ✅" });
+    return res.json({
+      success: true,
+      message: "Fingerprint saved ✅",
+    });
   } catch (err) {
-    console.error("addFinger error:", err.message);
-    res.status(500).json({ success: false, error: err.message });
+    console.error("addFinger error:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
 
-/* VERIFY BIOMETRIC */
+/* =========================
+   VERIFY BIOMETRIC
+========================= */
 exports.verifyBiometric = async (req, res) => {
   try {
-    // JWT is signed with { userId: user.user_id } in authController
     const userId = req.user?.userId;
     const { iris, finger } = req.body;
 
-    console.log("verifyBiometric → userId:", userId);
+    console.log("🔥 verifyBiometric HIT");
+    console.log("USER:", userId);
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized — not logged in" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
 
     const result = await pool.query(
@@ -114,19 +167,31 @@ exports.verifyBiometric = async (req, res) => {
     const user = result.rows[0];
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
-    const irisMatch   = iris   ? user.iris_template   === iris   : true;
+    const irisMatch = iris ? user.iris_template === iris : true;
     const fingerMatch = finger ? user.finger_template === finger : true;
 
     if (irisMatch && fingerMatch) {
-      return res.json({ success: true, message: "Verified ✅" });
+      return res.json({
+        success: true,
+        message: "Verified ✅",
+      });
     }
 
-    res.json({ success: false, message: "Biometric verification failed ❌" });
+    return res.json({
+      success: false,
+      message: "Biometric mismatch ❌",
+    });
   } catch (err) {
-    console.error("verifyBiometric error:", err.message);
-    res.status(500).json({ success: false, error: err.message });
+    console.error("verifyBiometric error:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
