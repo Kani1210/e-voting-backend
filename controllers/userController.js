@@ -46,6 +46,15 @@ exports.addIris = async (req, res) => {
 /* ADD FINGER */
 exports.addFinger = async (req, res) => {
   try {
+
+    // 🔥 FIX ADDED
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized (token missing or invalid)"
+      });
+    }
+
     const userId = req.user.userId;
     const { finger } = req.body;
 
@@ -59,6 +68,7 @@ exports.addFinger = async (req, res) => {
     );
 
     res.json({ success: true, message: "Fingerprint saved ✅" });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
