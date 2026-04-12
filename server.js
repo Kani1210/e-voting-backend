@@ -7,19 +7,18 @@ const userRoutes = require("./routes/userRoutes");
 
 const app = express();
 
-/* ✅ IMPORTANT */
 app.use(cors());
+
+/* 🔥 FIX: INCREASE PAYLOAD LIMIT */
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-/* TEST ROUTE */
 app.get("/", (req, res) => {
   res.json({ message: "API Running ✔" });
 });
 
-/* ROUTES */
 app.use("/auth", authRoutes);
-app.use("/users", userRoutes);   // 🔥 THIS IS YOUR MAIN ROUTE
+app.use("/users", userRoutes);
 
 const PORT = process.env.PORT || 5000;
 
