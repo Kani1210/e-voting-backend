@@ -40,67 +40,15 @@ exports.getUser = async (req, res) => {
 };
 
 /* =========================
-   ADD IRIS
-========================= */
-exports.addIris = async (req, res) => {
-  try {
-    const userId = req.user?.userId;
-    const { iris } = req.body;
-
-    console.log("🔥 addIris HIT");
-    console.log("USER:", userId);
-    console.log("IRIS LENGTH:", iris?.length);
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    if (!iris) {
-      return res.status(400).json({
-        success: false,
-        message: "iris is required",
-      });
-    }
-
-    const result = await pool.query(
-      "UPDATE users SET iris_template=$1 WHERE user_id=$2 RETURNING user_id",
-      [iris, userId]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    return res.json({
-      success: true,
-      message: "Iris saved ✅",
-    });
-  } catch (err) {
-    console.error("addIris error:", err);
-    return res.status(500).json({
-      success: false,
-      error: err.message,
-    });
-  }
-};
-
-/* =========================
-   ADD FINGER (FIXED)
+   ADD FINGERPRINT
 ========================= */
 exports.addFinger = async (req, res) => {
   try {
     const userId = req.user?.userId;
-    const { template } = req.body; // ✅ FIXED (was finger before)
+    let { template } = req.body;
 
     console.log("🔥 addFinger HIT");
     console.log("USER:", userId);
-    console.log("TEMPLATE LENGTH:", template?.length);
 
     if (!userId) {
       return res.status(401).json({
@@ -112,9 +60,14 @@ exports.addFinger = async (req, res) => {
     if (!template) {
       return res.status(400).json({
         success: false,
-        message: "template is required",
+        message: "Template is required",
       });
     }
+
+    // ✅ CLEAN BASE64 (IMPORTANT)
+    template = template.trim().replace(/\s/g, "");
+
+    console.log("TEMPLATE LENGTH:", template.length);
 
     const result = await pool.query(
       "UPDATE users SET finger_template=$1 WHERE user_id=$2 RETURNING user_id",
@@ -142,15 +95,11 @@ exports.addFinger = async (req, res) => {
 };
 
 /* =========================
-   VERIFY BIOMETRIC
+   GET STORED TEMPLATE (FOR VERIFY)
 ========================= */
-exports.verifyBiometric = async (req, res) => {
+exports.getFingerTemplate = async (req, res) => {
   try {
     const userId = req.user?.userId;
-    const { iris, finger } = req.body;
-
-    console.log("🔥 verifyBiometric HIT");
-    console.log("USER:", userId);
 
     if (!userId) {
       return res.status(401).json({
@@ -160,35 +109,25 @@ exports.verifyBiometric = async (req, res) => {
     }
 
     const result = await pool.query(
-      "SELECT iris_template, finger_template FROM users WHERE user_id=$1",
+      "SELECT finger_template FROM users WHERE user_id=$1",
       [userId]
     );
 
     const user = result.rows[0];
 
-    if (!user) {
+    if (!user || !user.finger_template) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
-      });
-    }
-
-    const irisMatch = iris ? user.iris_template === iris : true;
-    const fingerMatch = finger ? user.finger_template === finger : true;
-
-    if (irisMatch && fingerMatch) {
-      return res.json({
-        success: true,
-        message: "Verified ✅",
+        message: "No fingerprint found",
       });
     }
 
     return res.json({
-      success: false,
-      message: "Biometric mismatch ❌",
+      success: true,
+      template: user.finger_template, // 👈 SEND TO FRONTEND
     });
   } catch (err) {
-    console.error("verifyBiometric error:", err);
+    console.error("getFingerTemplate error:", err);
     return res.status(500).json({
       success: false,
       error: err.message,

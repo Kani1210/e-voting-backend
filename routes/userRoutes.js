@@ -5,23 +5,24 @@ const userController = require("../controllers/userController");
 const auth = require("../middleware/authMiddleware");
 
 /* =========================
-   TEST ROUTE
+   TEST
 ========================= */
 router.get("/test", (req, res) => {
-  return res.json({ success: true, message: "User route working ✔" });
+  res.json({ success: true, message: "User route working ✔" });
 });
 
 /* =========================
-   USER ROUTES
+   USER
 ========================= */
 router.get("/users", auth, userController.getUsers);
 router.get("/user/:id", auth, userController.getUser);
 
 /* =========================
-   BIOMETRIC ROUTES
+   FINGERPRINT
 ========================= */
-router.post("/add-iris", auth, userController.addIris);
 router.post("/add-finger", auth, userController.addFinger);
-router.post("/verify", auth, userController.verifyBiometric);
+
+// 👇 NEW ROUTE (IMPORTANT)
+router.get("/get-finger", auth, userController.getFingerTemplate);
 
 module.exports = router;
