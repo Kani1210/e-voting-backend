@@ -71,7 +71,7 @@ const login = async (req, res) => {
 
     let user;
 
-    // 🔵 ADMIN LOGIN
+    // 🔐 ADMIN LOGIN (WITH PASSWORD)
     if (password) {
       const result = await pool.query(
         "SELECT * FROM users WHERE email=$1",
@@ -97,7 +97,7 @@ const login = async (req, res) => {
       }
     }
 
-    // 🟢 VOTER LOGIN (NO PASSWORD)
+    // 🗳️ VOTER LOGIN (NO PASSWORD)
     else if (voterId && email) {
       const result = await pool.query(
         "SELECT * FROM users WHERE voter_id=$1 AND email=$2",
@@ -114,6 +114,15 @@ const login = async (req, res) => {
       user = result.rows[0];
     }
 
+    // ❌ INVALID
+    else {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid login data",
+      });
+    }
+
+    // 🔐 TOKEN
     const token = jwt.sign(
       {
         userId: user.user_id,
@@ -131,7 +140,7 @@ const login = async (req, res) => {
         voter_id: user.voter_id,
         name: user.name,
         email: user.email,
-        role: user.role, // ✅ IMPORTANT
+        role: user.role, // 🔥 IMPORTANT
       },
     });
 
