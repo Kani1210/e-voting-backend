@@ -1,146 +1,168 @@
 const pool = require("../db/db");
-const resend = require("../config/resend"); // ✅ FIXED (NO SMTP)
+const resend = require("../config/resend");
 const generateOTP = require("../utils/otp");
 
 /* =========================
-   SEND OTP (RESEND VERSION)
+   SEND OTP
 ========================= */
 const sendOtp = async (req, res) => {
-    try {
-        const { email } = req.body;
+  try {
+    const { email } = req.body;
 
-        // 1. Check user
-        const userResult = await pool.query(
-            "SELECT * FROM users WHERE email=$1",
-            [email]
-        );
-
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
-        }
-
-        const user = userResult.rows[0];
-
-        // 2. Generate OTP
-        const otp = generateOTP();
-
-        // 3. Save OTP (5 min expiry)
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-        await pool.query(
-            `INSERT INTO otp_verifications (user_id, otp, expires_at)
-             VALUES ($1, $2, $3)`,
-            [user.id, otp, expiresAt]
-        );
-
-        // 4. SEND EMAIL USING RESEND 🚀
-        await resend.emails.send({
-            from: "E-Voting <onboarding@resend.dev>",
-            to: email,
-            subject: "🔐 OTP Verification - E-Voting System",
-            html: `
-            <div style="font-family: Arial; padding:20px; background:#f4f6f9">
-              <div style="max-width:400px;margin:auto;background:#fff;padding:20px;border-radius:10px">
-                <h2 style="text-align:center">🗳️ E-Voting OTP</h2>
-                <p style="text-align:center">Your OTP code is:</p>
-
-                <h1 style="text-align:center;color:green;letter-spacing:5px">
-                  ${otp}
-                </h1>
-
-                <p style="text-align:center;font-size:14px">
-                  Valid for <b>5 minutes</b>
-                </p>
-
-                <p style="text-align:center;font-size:12px;color:gray">
-                  Do not share this OTP with anyone
-                </p>
-              </div>
-            </div>
-            `,
-        });
-
-        // 5. RESPONSE IMMEDIATELY 🚀
-        return res.json({
-            success: true,
-            message: "OTP sent successfully"
-        });
-
-    } catch (err) {
-        return res.status(500).json({
-            success: false,
-            error: err.message
-        });
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
     }
+
+    // 1. Check user
+    const userResult = await pool.query(
+      "SELECT * FROM users WHERE email=$1",
+      [email]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // 2. Generate OTP
+    const otp = generateOTP();
+
+    // 3. Save OTP (5 min expiry)
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await pool.query(
+      `INSERT INTO otp_verifications (user_id, otp, expires_at)
+       VALUES ($1, $2, $3)`,
+      [user.id, otp, expiresAt]
+    );
+
+    // 4. Send Email (Resend)
+    const emailResponse = await resend.emails.send({
+      from: "E-Voting <onboarding@resend.dev>",
+      to: email,
+      subject: "🔐 OTP Verification - E-Voting System",
+      html: `
+        <div style="font-family:Arial;background:#f4f6f9;padding:20px">
+          <div style="max-width:420px;margin:auto;background:#fff;padding:20px;border-radius:12px">
+
+            <h2 style="text-align:center">🗳️ E-Voting System</h2>
+
+            <p style="text-align:center">Your OTP Code</p>
+
+            <div style="text-align:center;margin:20px 0">
+              <span style="font-size:28px;font-weight:bold;letter-spacing:6px;color:#2ecc71">
+                ${otp}
+              </span>
+            </div>
+
+            <p style="text-align:center;font-size:14px">
+              Valid for <b>5 minutes</b>
+            </p>
+
+            <p style="text-align:center;font-size:12px;color:gray">
+              Do not share this OTP with anyone
+            </p>
+
+          </div>
+        </div>
+      `,
+    });
+
+    console.log("📧 Email sent:", emailResponse);
+
+    return res.json({
+      success: true,
+      message: "OTP sent successfully",
+    });
+
+  } catch (err) {
+    console.error("OTP SEND ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
 };
 
 /* =========================
-   VERIFY OTP (FIXED)
+   VERIFY OTP
 ========================= */
 const verifyOtp = async (req, res) => {
-    try {
-        const { email, otp } = req.body;
+  try {
+    const { email, otp } = req.body;
 
-        // 1. Get user
-        const userResult = await pool.query(
-            "SELECT * FROM users WHERE email=$1",
-            [email]
-        );
-
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
-        }
-
-        const user = userResult.rows[0];
-
-        // 2. Validate OTP
-        const otpResult = await pool.query(
-            `SELECT * FROM otp_verifications
-             WHERE user_id=$1
-             AND otp=$2
-             AND is_used=false
-             AND expires_at > NOW()
-             ORDER BY id DESC
-             LIMIT 1`,
-            [user.id, otp]
-        );
-
-        if (otpResult.rows.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid or expired OTP"
-            });
-        }
-
-        const record = otpResult.rows[0];
-
-        // 3. Mark as used
-        await pool.query(
-            "UPDATE otp_verifications SET is_used=true WHERE id=$1",
-            [record.id]
-        );
-
-        return res.json({
-            success: true,
-            message: "OTP verified successfully",
-            user_id: user.id
-        });
-
-    } catch (err) {
-        return res.status(500).json({
-            success: false,
-            error: err.message
-        });
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP required",
+      });
     }
+
+    // 1. Get user
+    const userResult = await pool.query(
+      "SELECT * FROM users WHERE email=$1",
+      [email]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // 2. Check OTP
+    const otpResult = await pool.query(
+      `SELECT * FROM otp_verifications
+       WHERE user_id=$1
+       AND otp=$2
+       AND is_used=false
+       AND expires_at > NOW()
+       ORDER BY id DESC
+       LIMIT 1`,
+      [user.id, otp]
+    );
+
+    if (otpResult.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
+      });
+    }
+
+    const record = otpResult.rows[0];
+
+    // 3. Mark as used
+    await pool.query(
+      "UPDATE otp_verifications SET is_used=true WHERE id=$1",
+      [record.id]
+    );
+
+    return res.json({
+      success: true,
+      message: "OTP verified successfully",
+      user_id: user.id,
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
 };
 
 module.exports = {
-    sendOtp,
-    verifyOtp
+  sendOtp,
+  verifyOtp,
 };
