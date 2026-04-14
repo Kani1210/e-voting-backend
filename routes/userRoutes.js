@@ -13,20 +13,18 @@ router.get("/test", (req, res) => {
 router.get("/users", auth, userController.getUsers);
 router.get("/user/:id", auth, userController.getUser);
 
-/* UPDATE */
+// UPDATE
 router.put("/user/:id", auth, userController.updateUser);
 
-/* DELETE */
+// DELETE
 router.delete("/user/:id", auth, userController.deleteUser);
 
-// FINGERPRINT
+// BIOMETRIC
 router.post("/add-finger", auth, userController.addFinger);
 router.get("/get-finger", auth, userController.getFingerTemplate);
 
-// SAVE 3 IRIS TEMPLATES
+// IRIS
 router.post("/iris/add", auth, userController.addIris);
-
-// GET IRIS TEMPLATES (FOR VERIFICATION)
 router.get("/iris/verify", auth, userController.getIrisTemplates);
 
 
