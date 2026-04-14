@@ -1,9 +1,9 @@
 const pool = require("../db/db");
-const transporter = require("../config/mail");
+const resend = require("../config/resend"); // ✅ FIXED (NO SMTP)
 const generateOTP = require("../utils/otp");
 
 /* =========================
-   SEND OTP (FIXED - NON BLOCKING)
+   SEND OTP (RESEND VERSION)
 ========================= */
 const sendOtp = async (req, res) => {
     try {
@@ -36,27 +36,34 @@ const sendOtp = async (req, res) => {
             [user.id, otp, expiresAt]
         );
 
-        // 4. SEND EMAIL (NON-BLOCKING FIX 🚀)
-        transporter.sendMail({
+        // 4. SEND EMAIL USING RESEND 🚀
+        await resend.emails.send({
+            from: "E-Voting <onboarding@resend.dev>",
             to: email,
             subject: "🔐 OTP Verification - E-Voting System",
             html: `
-            <div style="font-family: Arial; padding:20px">
-              <h2>🗳️ E-Voting OTP</h2>
-              <p>Your OTP is:</p>
-              <h1 style="color:green">${otp}</h1>
-              <p>Valid for 5 minutes</p>
+            <div style="font-family: Arial; padding:20px; background:#f4f6f9">
+              <div style="max-width:400px;margin:auto;background:#fff;padding:20px;border-radius:10px">
+                <h2 style="text-align:center">🗳️ E-Voting OTP</h2>
+                <p style="text-align:center">Your OTP code is:</p>
+
+                <h1 style="text-align:center;color:green;letter-spacing:5px">
+                  ${otp}
+                </h1>
+
+                <p style="text-align:center;font-size:14px">
+                  Valid for <b>5 minutes</b>
+                </p>
+
+                <p style="text-align:center;font-size:12px;color:gray">
+                  Do not share this OTP with anyone
+                </p>
+              </div>
             </div>
-            `
-        }, (err, info) => {
-            if (err) {
-                console.log("❌ Email error:", err.message);
-            } else {
-                console.log("📧 Email sent:", info.response);
-            }
+            `,
         });
 
-        // 5. RESPOND IMMEDIATELY 🚀
+        // 5. RESPONSE IMMEDIATELY 🚀
         return res.json({
             success: true,
             message: "OTP sent successfully"
@@ -71,12 +78,13 @@ const sendOtp = async (req, res) => {
 };
 
 /* =========================
-   VERIFY OTP (NO CHANGE)
+   VERIFY OTP (FIXED)
 ========================= */
 const verifyOtp = async (req, res) => {
     try {
         const { email, otp } = req.body;
 
+        // 1. Get user
         const userResult = await pool.query(
             "SELECT * FROM users WHERE email=$1",
             [email]
@@ -91,10 +99,11 @@ const verifyOtp = async (req, res) => {
 
         const user = userResult.rows[0];
 
+        // 2. Validate OTP
         const otpResult = await pool.query(
             `SELECT * FROM otp_verifications
-             WHERE user_id=$1 
-             AND otp=$2 
+             WHERE user_id=$1
+             AND otp=$2
              AND is_used=false
              AND expires_at > NOW()
              ORDER BY id DESC
@@ -111,6 +120,7 @@ const verifyOtp = async (req, res) => {
 
         const record = otpResult.rows[0];
 
+        // 3. Mark as used
         await pool.query(
             "UPDATE otp_verifications SET is_used=true WHERE id=$1",
             [record.id]
