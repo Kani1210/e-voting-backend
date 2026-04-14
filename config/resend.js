@@ -1,10 +1,11 @@
 const { Resend } = require("resend");
 
-// SAFE CHECK (prevents crash)
-if (!process.env.RESEND_API_KEY) {
-    console.error("❌ RESEND_API_KEY is missing in .env / Render env");
+const apiKey = process.env.RESEND_API_KEY;
+
+if (!apiKey) {
+    throw new Error("❌ RESEND_API_KEY is missing in environment variables");
 }
 
-const resend = new Resend(process.env.RESEND_API_KEY || "");
+const resend = new Resend(apiKey);
 
 module.exports = resend;
