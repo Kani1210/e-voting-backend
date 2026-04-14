@@ -8,3 +8,5 @@ const transporter = nodemailer.createTransport({
   },
   connectionTimeout: 30000,
 });
+
+module.exports = transporter; // ✅ THIS IS REQUIRED
