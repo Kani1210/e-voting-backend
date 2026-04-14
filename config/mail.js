@@ -8,8 +8,13 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  connectionTimeout: 10000, // 🔥 increase timeout
+  connectionTimeout: 15000,
+  requireTLS: true,
   tls: {
     rejectUnauthorized: false,
   },
+  logger: true,
+  debug: true,
 });
+
+module.exports = transporter;
