@@ -10,10 +10,12 @@ const app = express();
 /* =========================
    CORS
 ========================= */
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-}));
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  })
+);
 
 /* =========================
    BODY PARSER
@@ -24,14 +26,15 @@ app.use(express.json({ limit: "50mb" }));
    HEALTH CHECK
 ========================= */
 app.get("/", (req, res) => {
-  return res.json({ success: true, message: "API Running ✔" });
+  res.json({ success: true, message: "API Running ✔" });
 });
 
 /* =========================
-   ROUTES MOUNTING (VERY IMPORTANT)
+   ROUTES
 ========================= */
+// IMPORTANT: THESE DEFINE YOUR URL PREFIX
 app.use("/auth", authRoutes);
-app.use("/users", userRoutes); // 🔥 THIS MUST MATCH FRONTEND
+app.use("/users", userRoutes);
 
 /* =========================
    START SERVER

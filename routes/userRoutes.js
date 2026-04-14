@@ -23,4 +23,11 @@ router.delete("/user/:id", auth, userController.deleteUser);
 router.post("/add-finger", auth, userController.addFinger);
 router.get("/get-finger", auth, userController.getFingerTemplate);
 
+// SAVE 3 IRIS TEMPLATES
+router.post("/iris/add", auth, userController.addIris);
+
+// GET IRIS TEMPLATES (FOR VERIFICATION)
+router.get("/iris/verify", auth, userController.getIrisTemplates);
+
+
 module.exports = router;

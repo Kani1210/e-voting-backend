@@ -2,8 +2,10 @@ const pool = require("../db/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-/* REGISTER */
-exports.register = async (req, res) => {
+/* =========================
+   REGISTER
+========================= */
+const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
@@ -14,6 +16,7 @@ exports.register = async (req, res) => {
       });
     }
 
+    // check user exists
     const check = await pool.query(
       "SELECT * FROM users WHERE email=$1",
       [email]
@@ -26,14 +29,34 @@ exports.register = async (req, res) => {
       });
     }
 
+    // generate IDs
     const userId = "USR" + Date.now();
+
+    const voterId =
+      "VOTER" +
+      Date.now() +
+      Math.floor(100 + Math.random() * 900);
+
+    console.log("Generated voterId:", voterId);
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // FIXED INSERT (MATCH ALL IMPORTANT FIELDS)
     const result = await pool.query(
-      `INSERT INTO users (user_id, name, email, password)
-       VALUES ($1,$2,$3,$4)
-       RETURNING user_id, name, email`,
-      [userId, name, email, hashedPassword]
+      `INSERT INTO users 
+        (user_id, voter_id, name, email, password, status, role)
+       VALUES 
+        ($1,$2,$3,$4,$5,$6,$7)
+       RETURNING user_id, voter_id, name, email`,
+      [
+        userId,
+        voterId,
+        name,
+        email,
+        hashedPassword,
+        "active",
+        "voter"
+      ]
     );
 
     return res.json({
@@ -41,13 +64,19 @@ exports.register = async (req, res) => {
       message: "Registered successfully",
       user: result.rows[0],
     });
+
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
 
-/* LOGIN */
-exports.login = async (req, res) => {
+/* =========================
+   LOGIN
+========================= */
+const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -88,11 +117,21 @@ exports.login = async (req, res) => {
       token,
       user: {
         user_id: user.user_id,
+        voter_id: user.voter_id,
         name: user.name,
         email: user.email,
       },
     });
+
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
+};
+
+module.exports = {
+  register,
+  login,
 };
