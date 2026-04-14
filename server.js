@@ -4,6 +4,7 @@ require("dotenv").config();
 
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
+const otpRoutes = require("./routes/otpRoutes");
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.get("/", (req, res) => {
 // IMPORTANT: THESE DEFINE YOUR URL PREFIX
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
+app.use("/otp", otpRoutes);
 
 /* =========================
    START SERVER
