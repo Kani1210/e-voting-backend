@@ -67,29 +67,51 @@ const register = async (req, res) => {
 /* LOGIN */
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, voterId } = req.body;
 
-    const result = await pool.query(
-      "SELECT * FROM users WHERE email=$1",
-      [email]
-    );
+    let user;
 
-    if (result.rows.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "User not found",
-      });
+    // 🔵 ADMIN LOGIN
+    if (password) {
+      const result = await pool.query(
+        "SELECT * FROM users WHERE email=$1",
+        [email]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      user = result.rows[0];
+
+      const match = await bcrypt.compare(password, user.password);
+
+      if (!match) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid password",
+        });
+      }
     }
 
-    const user = result.rows[0];
+    // 🟢 VOTER LOGIN (NO PASSWORD)
+    else if (voterId && email) {
+      const result = await pool.query(
+        "SELECT * FROM users WHERE voter_id=$1 AND email=$2",
+        [voterId, email]
+      );
 
-    const match = await bcrypt.compare(password, user.password);
+      if (result.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid voter credentials",
+        });
+      }
 
-    if (!match) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid password",
-      });
+      user = result.rows[0];
     }
 
     const token = jwt.sign(
@@ -109,7 +131,7 @@ const login = async (req, res) => {
         voter_id: user.voter_id,
         name: user.name,
         email: user.email,
-        gender: user.gender,
+        role: user.role, // ✅ IMPORTANT
       },
     });
 
