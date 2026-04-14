@@ -3,7 +3,7 @@ const transporter = require("../config/mail");
 const generateOTP = require("../utils/otp");
 
 /* =========================
-   SEND OTP
+   SEND OTP (FIXED - NON BLOCKING)
 ========================= */
 const sendOtp = async (req, res) => {
     try {
@@ -27,75 +27,36 @@ const sendOtp = async (req, res) => {
         // 2. Generate OTP
         const otp = generateOTP();
 
-        // 3. Save OTP (NO timezone issue - JS handles time)
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+        // 3. Save OTP (5 min expiry)
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
         await pool.query(
             `INSERT INTO otp_verifications (user_id, otp, expires_at)
-       VALUES ($1, $2, $3)`,
+             VALUES ($1, $2, $3)`,
             [user.id, otp, expiresAt]
         );
 
-        // 4. Send Email
-        await transporter.sendMail({
+        // 4. SEND EMAIL (NON-BLOCKING FIX 🚀)
+        transporter.sendMail({
             to: email,
             subject: "🔐 OTP Verification - E-Voting System",
-
             html: `
-  <div style="font-family: Arial, sans-serif; background:#f4f6f9; padding:20px;">
-
-    <div style="
-      max-width:420px;
-      margin:auto;
-      background:white;
-      padding:20px;
-      border-radius:12px;
-      box-shadow:0 3px 12px rgba(0,0,0,0.15);
-    ">
-
-      <h2 style="text-align:center; color:#2c3e50; font-size:22px;">
-        🗳️ E-Voting System
-      </h2>
-
-      <p style="font-size:15px; color:#333; text-align:center;">
-        Your OTP verification code
-      </p>
-
-      <div style="text-align:center; margin:25px 0;">
-        <span style="
-          font-size:30px;
-          letter-spacing:6px;
-          font-weight:bold;
-          color:white;
-          background:#4CAF50;
-          padding:14px 30px;
-          border-radius:10px;
-          display:inline-block;
-        ">
-          ${otp}
-        </span>
-      </div>
-
-      <p style="font-size:14px; color:#555; text-align:center;">
-        This OTP is valid for <b>5 minutes</b>
-      </p>
-
-      <p style="font-size:12px; color:#888; text-align:center; margin-top:20px;">
-        ⚠️ Do not share this OTP with anyone
-      </p>
-
-      <hr style="margin:20px 0;" />
-
-      <p style="font-size:11px; color:#999; text-align:center;">
-        Works on mobile & desktop browsers
-      </p>
-
-    </div>
-
-  </div>
-  `
+            <div style="font-family: Arial; padding:20px">
+              <h2>🗳️ E-Voting OTP</h2>
+              <p>Your OTP is:</p>
+              <h1 style="color:green">${otp}</h1>
+              <p>Valid for 5 minutes</p>
+            </div>
+            `
+        }, (err, info) => {
+            if (err) {
+                console.log("❌ Email error:", err.message);
+            } else {
+                console.log("📧 Email sent:", info.response);
+            }
         });
 
+        // 5. RESPOND IMMEDIATELY 🚀
         return res.json({
             success: true,
             message: "OTP sent successfully"
@@ -110,13 +71,12 @@ const sendOtp = async (req, res) => {
 };
 
 /* =========================
-   VERIFY OTP
+   VERIFY OTP (NO CHANGE)
 ========================= */
 const verifyOtp = async (req, res) => {
     try {
         const { email, otp } = req.body;
 
-        // 1. Get user
         const userResult = await pool.query(
             "SELECT * FROM users WHERE email=$1",
             [email]
@@ -131,15 +91,14 @@ const verifyOtp = async (req, res) => {
 
         const user = userResult.rows[0];
 
-        // 2. Get latest valid OTP (IMPORTANT FIX)
         const otpResult = await pool.query(
             `SELECT * FROM otp_verifications
-       WHERE user_id=$1 
-       AND otp=$2 
-       AND is_used=false
-       AND expires_at > NOW()
-       ORDER BY id DESC
-       LIMIT 1`,
+             WHERE user_id=$1 
+             AND otp=$2 
+             AND is_used=false
+             AND expires_at > NOW()
+             ORDER BY id DESC
+             LIMIT 1`,
             [user.id, otp]
         );
 
@@ -152,7 +111,6 @@ const verifyOtp = async (req, res) => {
 
         const record = otpResult.rows[0];
 
-        // 3. Mark OTP as used
         await pool.query(
             "UPDATE otp_verifications SET is_used=true WHERE id=$1",
             [record.id]
