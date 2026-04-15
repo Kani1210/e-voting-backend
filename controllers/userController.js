@@ -5,30 +5,19 @@ const pool = require("../db/db");
 ========================= */
 exports.getUsers = async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT 
-        user_id,
-        voter_id,
-        name,
-        email,
-        gender,
-        age,
-        phone,
-        status,
-        role,
-        created_at,
-        updated_at
-      FROM users
-      ORDER BY created_at DESC
-    `);
+    const result = await pool.query(
+      "SELECT user_id, name, email FROM users ORDER BY created_at DESC"
+    );
 
     return res.json({
       success: true,
-      users: result.rows
+      users: result.rows,
     });
-
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
 
@@ -39,40 +28,32 @@ exports.getUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await pool.query(`
-      SELECT 
-        user_id,
-        voter_id,
-        name,
-        email,
-        gender,
-        age,
-        phone,
-        status,
-        role,
-        created_at,
-        updated_at
-      FROM users
-      WHERE user_id=$1
-    `, [id]);
+    const result = await pool.query(
+      "SELECT user_id, name, email FROM users WHERE user_id=$1",
+      [id]
+    );
 
     if (!result.rows.length) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
     return res.json({
       success: true,
-      user: result.rows[0]
+      user: result.rows[0],
     });
-
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
 
-
 /* =========================
-   ADD USER (FINAL FIXED)
+   ADD USER (ADMIN ONLY)
 ========================= */
 exports.addUser = async (req, res) => {
   try {
@@ -85,20 +66,17 @@ exports.addUser = async (req, res) => {
       phone,
       address,
       aadhar_no,
-      votes,
       status,
-      role
+      role,
     } = req.body;
 
-    // REQUIRED FIELDS
-    if (!name || !email || !password || votes === undefined) {
+    if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "name, email, password, votes required"
+        message: "name, email, password required",
       });
     }
 
-    // AUTO IDS
     const user_id = "USR" + Date.now();
     const voter_id = "VOTER" + Date.now() + Math.floor(Math.random() * 999);
 
@@ -114,14 +92,13 @@ exports.addUser = async (req, res) => {
         phone,
         address,
         aadhar_no,
-        votes,
         status,
         role,
         created_at,
         updated_at
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
-      RETURNING *`,
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW(),NOW())
+      RETURNING user_id, name, email`,
       [
         user_id,
         voter_id,
@@ -133,22 +110,20 @@ exports.addUser = async (req, res) => {
         phone || null,
         address || null,
         aadhar_no || null,
-        votes,
         status || "active",
-        role || "voter"
+        role || "voter",
       ]
     );
 
     return res.json({
       success: true,
       message: "User created successfully",
-      user: result.rows[0]
+      user: result.rows[0],
     });
-
   } catch (err) {
     return res.status(500).json({
       success: false,
-      error: err.message
+      error: err.message,
     });
   }
 };
@@ -159,45 +134,35 @@ exports.addUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      name,
-      email,
-      gender,
-      age,
-      phone,
-      status,
-      role
-    } = req.body;
+    const { name, email } = req.body;
 
-    const result = await pool.query(`
-      UPDATE users
-      SET 
-        name=$1,
-        email=$2,
-        gender=$3,
-        age=$4,
-        phone=$5,
-        status=$6,
-        role=$7,
-        updated_at=NOW()
-      WHERE user_id=$8
-      RETURNING *
-    `, [name, email, gender, age, phone, status, role, id]);
+    const result = await pool.query(
+      `UPDATE users
+       SET name=$1, email=$2, updated_at=NOW()
+       WHERE user_id=$3
+       RETURNING user_id, name, email`,
+      [name, email, id]
+    );
 
     if (!result.rows.length) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
     return res.json({
       success: true,
-      message: "User updated",
-      user: result.rows[0]
+      user: result.rows[0],
     });
-
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
+
 /* =========================
    DELETE USER
 ========================= */
@@ -211,19 +176,23 @@ exports.deleteUser = async (req, res) => {
     );
 
     if (!result.rows.length) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
     return res.json({
       success: true,
-      message: "User deleted"
+      message: "User deleted",
     });
-
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
-
 /* =========================
    ADD FINGERPRINT
 ========================= */

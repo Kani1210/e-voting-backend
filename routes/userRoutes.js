@@ -9,8 +9,7 @@ router.get("/test", (req, res) => {
   res.json({ success: true, message: "User route working ✔" });
 });
 
-// USERS
-
+// USERS (ALL PROTECTED)
 router.get("/", auth, userController.getUsers);
 router.get("/:id", auth, userController.getUser);
 router.post("/", auth, userController.addUser);
