@@ -255,82 +255,82 @@ exports.getFingerTemplate = async (req, res) => {
   }
 };
 
-// SAVE 3 IRIS TEMPLATES
-/* =========================
-   SAVE IRIS (3 TEMPLATES)
-========================= */
-exports.addIris = async (req, res) => {
-  try {
-    const userId = req.user?.userId;
-    const { irisTemplate1, irisTemplate2, irisTemplate3 } = req.body;
+// // SAVE 3 IRIS TEMPLATES
+// /* =========================
+//    SAVE IRIS (3 TEMPLATES)
+// ========================= */
+// exports.addIris = async (req, res) => {
+//   try {
+//     const userId = req.user?.userId;
+//     const { irisTemplate1, irisTemplate2, irisTemplate3 } = req.body;
 
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
+//     if (!userId) {
+//       return res.status(401).json({ success: false, message: "Unauthorized" });
+//     }
 
-    if (!irisTemplate1 || !irisTemplate2 || !irisTemplate3) {
-      return res.status(400).json({ success: false, message: "All 3 templates required" });
-    }
+//     if (!irisTemplate1 || !irisTemplate2 || !irisTemplate3) {
+//       return res.status(400).json({ success: false, message: "All 3 templates required" });
+//     }
 
-    const t1 = irisTemplate1.replace(/\s/g, "").trim();
-    const t2 = irisTemplate2.replace(/\s/g, "").trim();
-    const t3 = irisTemplate3.replace(/\s/g, "").trim();
+//     const t1 = irisTemplate1.replace(/\s/g, "").trim();
+//     const t2 = irisTemplate2.replace(/\s/g, "").trim();
+//     const t3 = irisTemplate3.replace(/\s/g, "").trim();
 
-    await pool.query(
-      `UPDATE users 
-       SET iris_template_1=$1,
-           iris_template_2=$2,
-           iris_template_3=$3
-       WHERE user_id=$4`,
-      [t1, t2, t3, userId]
-    );
+//     await pool.query(
+//       `UPDATE users 
+//        SET iris_template_1=$1,
+//            iris_template_2=$2,
+//            iris_template_3=$3
+//        WHERE user_id=$4`,
+//       [t1, t2, t3, userId]
+//     );
 
-    return res.json({
-      success: true,
-      message: "Iris templates saved ✔"
-    });
+//     return res.json({
+//       success: true,
+//       message: "Iris templates saved ✔"
+//     });
 
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-};
+//   } catch (err) {
+//     return res.status(500).json({ success: false, error: err.message });
+//   }
+// };
 
-/* =========================
-   GET IRIS (FOR VERIFY)
-========================= */
-exports.getIrisTemplates = async (req, res) => {
-  try {
-    const userId = req.user?.userId;
+// /* =========================
+//    GET IRIS (FOR VERIFY)
+// ========================= */
+// exports.getIrisTemplates = async (req, res) => {
+//   try {
+//     const userId = req.user?.userId;
 
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
+//     if (!userId) {
+//       return res.status(401).json({ success: false, message: "Unauthorized" });
+//     }
 
-    const result = await pool.query(
-      `SELECT iris_template_1, iris_template_2, iris_template_3
-       FROM users
-       WHERE user_id=$1`,
-      [userId]
-    );
+//     const result = await pool.query(
+//       `SELECT iris_template_1, iris_template_2, iris_template_3
+//        FROM users
+//        WHERE user_id=$1`,
+//       [userId]
+//     );
 
-    if (!result.rows.length) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
+//     if (!result.rows.length) {
+//       return res.status(404).json({ success: false, message: "User not found" });
+//     }
 
-    const row = result.rows[0];
+//     const row = result.rows[0];
 
-    const templates = [
-      row.iris_template_1,
-      row.iris_template_2,
-      row.iris_template_3
-    ].filter(Boolean);
+//     const templates = [
+//       row.iris_template_1,
+//       row.iris_template_2,
+//       row.iris_template_3
+//     ].filter(Boolean);
 
-    return res.json({
-      success: true,
-      templates
-    });
+//     return res.json({
+//       success: true,
+//       templates
+//     });
 
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-};
+//   } catch (err) {
+//     return res.status(500).json({ success: false, error: err.message });
+//   }
+// };

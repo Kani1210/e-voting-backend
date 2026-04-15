@@ -20,9 +20,9 @@ router.delete("/:id", auth, userController.deleteUser);
 router.post("/add-finger", auth, userController.addFinger);
 router.get("/get-finger", auth, userController.getFingerTemplate);
 
-// IRIS
-router.post("/iris/add", auth, userController.addIris);
-router.get("/iris/verify", auth, userController.getIrisTemplates);
+// // IRIS
+// router.post("/iris/add", auth, userController.addIris);
+// router.get("/iris/verify", auth, userController.getIrisTemplates);
 
 
 module.exports = router;

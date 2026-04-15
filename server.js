@@ -8,6 +8,7 @@ require("dotenv").config();
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const otpRoutes = require("./routes/otpRoutes");
+const irisRoutes = require("./routes/irisRoutes");
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use(
    BODY PARSER
 ========================= */
 app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 /* =========================
    HEALTH CHECK
@@ -40,6 +42,7 @@ app.get("/", (req, res) => {
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/otp", otpRoutes);
+app.use("/iris", irisRoutes);
 
 /* =========================
    START SERVER
