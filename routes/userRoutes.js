@@ -13,6 +13,9 @@ router.get("/test", (req, res) => {
 router.get("/users", auth, userController.getUsers);
 router.get("/user/:id", auth, userController.getUser);
 
+// USERS
+router.post("/user", auth, userController.addUser);
+
 // UPDATE
 router.put("/user/:id", auth, userController.updateUser);
 

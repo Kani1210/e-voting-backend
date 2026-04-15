@@ -70,6 +70,89 @@ exports.getUser = async (req, res) => {
   }
 };
 
+
+/* =========================
+   ADD USER (FINAL FIXED)
+========================= */
+exports.addUser = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      password,
+      gender,
+      age,
+      phone,
+      address,
+      aadhar_no,
+      votes,
+      status,
+      role
+    } = req.body;
+
+    // REQUIRED FIELDS
+    if (!name || !email || !password || votes === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "name, email, password, votes required"
+      });
+    }
+
+    // AUTO IDS
+    const user_id = "USR" + Date.now();
+    const voter_id = "VOTER" + Date.now() + Math.floor(Math.random() * 999);
+
+    const result = await pool.query(
+      `INSERT INTO users (
+        user_id,
+        voter_id,
+        name,
+        email,
+        password,
+        gender,
+        age,
+        phone,
+        address,
+        aadhar_no,
+        votes,
+        status,
+        role,
+        created_at,
+        updated_at
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
+      RETURNING *`,
+      [
+        user_id,
+        voter_id,
+        name,
+        email,
+        password,
+        gender || null,
+        age || null,
+        phone || null,
+        address || null,
+        aadhar_no || null,
+        votes,
+        status || "active",
+        role || "voter"
+      ]
+    );
+
+    return res.json({
+      success: true,
+      message: "User created successfully",
+      user: result.rows[0]
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+};
+
 /* =========================
    UPDATE USER
 ========================= */
