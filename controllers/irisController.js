@@ -96,7 +96,7 @@ exports.verifyIris = async (req, res) => {
     }
 
     // 🔥 FINAL THRESHOLD (TUNE HERE)
-    const verified = distance < 200;
+    const verified = distance < 2500;
 
     res.json({ verified, distance });
 
