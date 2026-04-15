@@ -38,27 +38,29 @@ exports.addIris = async (req, res) => {
   }
 };
 
-/* ================= VERIFY ================= */
-
+/* ================= IMPROVED VECTOR MATCH ================= */
 function compareVectors(a, b) {
   if (!a || !b || a.length !== b.length) return null;
 
-  let diff = 0;
+  let sum = 0;
+  const n = a.length;
 
-  for (let i = 0; i < a.length; i++) {
-    diff += Math.abs(a[i] - b[i]);
+  for (let i = 0; i < n; i++) {
+    const diff = a[i] - b[i];
+    sum += diff * diff; // ✅ squared distance (better than abs)
   }
 
-  return diff;
+  return Math.sqrt(sum); // Euclidean distance
 }
 
+/* ================= VERIFY ================= */
 exports.verifyIris = async (req, res) => {
   try {
     const userId = req.user.userId;
     const { irisImage } = req.body;
 
     if (!irisImage) {
-      return res.json({ verified: false });
+      return res.json({ verified: false, distance: null });
     }
 
     const response = await fetch("https://iris-ai-vyiz.onrender.com/extract", {
@@ -72,7 +74,6 @@ exports.verifyIris = async (req, res) => {
     const data = await response.json();
 
     if (!data || !data.iris_vector) {
-      console.log("❌ Python error:", data);
       return res.json({ verified: false, distance: null });
     }
 
@@ -95,13 +96,19 @@ exports.verifyIris = async (req, res) => {
       return res.json({ verified: false, distance: null });
     }
 
-    // 🔥 FINAL THRESHOLD (TUNE HERE)
-    const verified = distance < 2500;
+    /* ================= THRESHOLD (IMPORTANT FIX) ================= */
+    const THRESHOLD = 3000; // 🔥 FIXED VALUE
 
-    res.json({ verified, distance });
+    const verified = distance < THRESHOLD;
+
+    res.json({
+      verified,
+      distance,
+      threshold: THRESHOLD
+    });
 
   } catch (err) {
     console.error("VERIFY ERROR:", err);
-    res.status(500).json({ verified: false });
+    res.status(500).json({ verified: false, distance: null });
   }
 };
