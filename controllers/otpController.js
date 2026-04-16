@@ -141,4 +141,4 @@ const verifyOtp = async (req, res) => {
 module.exports = {
   sendOtp,
   verifyOtp,
-};back to old code
+}
