@@ -14,15 +14,15 @@ router.get("/test", (req, res) => {
 /* =========================
    USER
 ========================= */
-router.get("/users", auth, userController.getUsers);
+router.get("/", auth, userController.getUsers);
 router.get("/user/:id", auth, userController.getUser);
 
 /* =========================
    FINGERPRINT
 ========================= */
-router.post("/users/add-finger", auth, userController.addFinger);
+router.post("/add-finger", auth, userController.addFinger);
 
 // 👇 NEW ROUTE (IMPORTANT)
-router.get("/users/get-finger", auth, userController.getFingerTemplate);
+router.get("/get-finger", auth, userController.getFingerTemplate);
 
 module.exports = router;
