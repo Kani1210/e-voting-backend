@@ -16,7 +16,7 @@ const sendOtp = async (req, res) => {
       });
     }
 
-    // GET USER
+    // 1. Check user
     const userResult = await pool.query(
       "SELECT * FROM users WHERE email=$1",
       [email]
@@ -31,40 +31,27 @@ const sendOtp = async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // IMPORTANT CHECK
-    if (!user.user_id) {
-      return res.status(500).json({
-        success: false,
-        message: "user_id missing in users table",
-      });
-    }
-
-    // GENERATE OTP
+    // 2. Generate OTP
     const otp = generateOTP();
 
-    // 10 MIN EXPIRY
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    // 3. Save OTP (5 min expiry)
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // DELETE OLD OTPs (optional but recommended)
-    await pool.query(
-      "DELETE FROM otp_verifications WHERE user_id=$1",
-      [user.user_id]
-    );
-
-    // INSERT OTP
     await pool.query(
       `INSERT INTO otp_verifications (user_id, otp, expires_at)
        VALUES ($1, $2, $3)`,
-      [user.user_id, otp, expiresAt]
+      [user.id, otp, expiresAt]
     );
 
-    // SEND EMAIL
-    await resend.emails.send({
-      from: "E-Voting <support@coreberly.in>",
-      to: email,
-      subject: "OTP Verification",
-      html: `<h2>Your OTP is ${otp}</h2>`,
-    });
+    // 4. Send Email (Resend)
+    const emailResponse = await resend.emails.send({
+  from: "E-Voting <support@coreberly.in>",
+  to: email,
+  subject: "🔐 OTP Verification - E-Voting System",
+  html: `<b>Your OTP is ${otp}</b>`,
+});
+
+    console.log("📧 Email sent:", emailResponse);
 
     return res.json({
       success: true,
@@ -72,7 +59,7 @@ const sendOtp = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("SEND OTP ERROR:", err);
+    console.error("OTP SEND ERROR:", err);
 
     return res.status(500).json({
       success: false,
@@ -95,7 +82,7 @@ const verifyOtp = async (req, res) => {
       });
     }
 
-    // GET USER
+    // 1. Get user
     const userResult = await pool.query(
       "SELECT * FROM users WHERE email=$1",
       [email]
@@ -110,7 +97,7 @@ const verifyOtp = async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // CHECK OTP
+    // 2. Check OTP
     const otpResult = await pool.query(
       `SELECT * FROM otp_verifications
        WHERE user_id=$1
@@ -119,7 +106,7 @@ const verifyOtp = async (req, res) => {
        AND expires_at > NOW()
        ORDER BY id DESC
        LIMIT 1`,
-      [user.user_id, otp]
+      [user.id, otp]
     );
 
     if (otpResult.rows.length === 0) {
@@ -131,7 +118,7 @@ const verifyOtp = async (req, res) => {
 
     const record = otpResult.rows[0];
 
-    // MARK USED
+    // 3. Mark as used
     await pool.query(
       "UPDATE otp_verifications SET is_used=true WHERE id=$1",
       [record.id]
@@ -140,12 +127,10 @@ const verifyOtp = async (req, res) => {
     return res.json({
       success: true,
       message: "OTP verified successfully",
-      user_id: user.user_id,
+      user_id: user.id,
     });
 
   } catch (err) {
-    console.error("VERIFY OTP ERROR:", err);
-
     return res.status(500).json({
       success: false,
       error: err.message,
@@ -156,4 +141,4 @@ const verifyOtp = async (req, res) => {
 module.exports = {
   sendOtp,
   verifyOtp,
-};
+};back to old code
