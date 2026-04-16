@@ -2,7 +2,9 @@ const pool = require("../db/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-/* REGISTER */
+/* =========================
+   REGISTER
+========================= */
 const register = async (req, res) => {
   try {
     const { name, email, password, gender } = req.body;
@@ -14,7 +16,7 @@ const register = async (req, res) => {
       });
     }
 
-    // check user
+    // check existing user
     const check = await pool.query(
       "SELECT * FROM users WHERE email=$1",
       [email]
@@ -37,7 +39,7 @@ const register = async (req, res) => {
         (user_id, voter_id, name, email, password, gender, status, role)
        VALUES 
         ($1,$2,$3,$4,$5,$6,$7,$8)
-       RETURNING user_id, voter_id, name, email, gender`,
+       RETURNING id, user_id, voter_id, name, email, gender, role`,
       [
         userId,
         voterId,
@@ -64,14 +66,16 @@ const register = async (req, res) => {
   }
 };
 
-/* LOGIN */
+/* =========================
+   LOGIN
+========================= */
 const login = async (req, res) => {
   try {
     const { email, password, voterId } = req.body;
 
     let user;
 
-    // 🔐 ADMIN LOGIN (WITH PASSWORD)
+    // 🔐 ADMIN LOGIN
     if (password) {
       const result = await pool.query(
         "SELECT * FROM users WHERE email=$1",
@@ -97,7 +101,7 @@ const login = async (req, res) => {
       }
     }
 
-    // 🗳️ VOTER LOGIN (NO PASSWORD)
+    // 🗳️ VOTER LOGIN
     else if (voterId && email) {
       const result = await pool.query(
         "SELECT * FROM users WHERE voter_id=$1 AND email=$2",
@@ -114,7 +118,6 @@ const login = async (req, res) => {
       user = result.rows[0];
     }
 
-    // ❌ INVALID
     else {
       return res.status(400).json({
         success: false,
@@ -122,7 +125,7 @@ const login = async (req, res) => {
       });
     }
 
-    // 🔐 TOKEN
+    // 🔐 JWT TOKEN
     const token = jwt.sign(
       {
         userId: user.user_id,
@@ -132,15 +135,17 @@ const login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    // ✅ FIX: ALWAYS INCLUDE DB PRIMARY ID
     return res.json({
       success: true,
       token,
       user: {
+        id: user.id,              // 🔥 IMPORTANT FIX (THIS FIXES YOUR /undefined ISSUE)
         user_id: user.user_id,
         voter_id: user.voter_id,
         name: user.name,
         email: user.email,
-        role: user.role, // 🔥 IMPORTANT
+        role: user.role,
       },
     });
 
