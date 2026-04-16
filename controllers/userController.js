@@ -1,14 +1,16 @@
 const pool = require("../db/db");
 
 /* =========================
-   GET USERS
+   GET ALL USERS
 ========================= */
 exports.getUsers = async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM users");
+    const result = await pool.query(
+      "SELECT user_id, name, email FROM users"
+    );
+
     return res.json(result.rows);
   } catch (err) {
-    console.error(err);
     return res.status(500).json({ success: false, error: err.message });
   }
 };
@@ -25,7 +27,7 @@ exports.getUser = async (req, res) => {
       [id]
     );
 
-    if (!result.rows[0]) {
+    if (!result.rows.length) {
       return res.status(404).json({
         success: false,
         message: "User not found",
@@ -34,7 +36,66 @@ exports.getUser = async (req, res) => {
 
     return res.json(result.rows[0]);
   } catch (err) {
-    console.error(err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+/* =========================
+   UPDATE USER
+========================= */
+exports.updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email } = req.body;
+
+    const result = await pool.query(
+      `UPDATE users
+       SET name=$1, email=$2
+       WHERE user_id=$3
+       RETURNING user_id, name, email`,
+      [name, email, id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      user: result.rows[0],
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+/* =========================
+   DELETE USER
+========================= */
+exports.deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      "DELETE FROM users WHERE user_id=$1 RETURNING user_id",
+      [id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "User deleted",
+    });
+  } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
