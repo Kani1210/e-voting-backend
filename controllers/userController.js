@@ -6,24 +6,24 @@ const pool = require("../db/db");
 exports.getUsers = async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT user_id, name, email FROM users"
+      "SELECT id, user_id, name, email FROM users ORDER BY id ASC"
     );
 
     return res.json(result.rows);
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
 /* =========================
-   GET USER BY ID
+   GET USER BY ID (INDEX ID)
 ========================= */
 exports.getUser = async (req, res) => {
   try {
     const { id } = req.params;
 
     const result = await pool.query(
-      "SELECT user_id, name, email FROM users WHERE user_id=$1",
+      "SELECT id, user_id, name, email FROM users WHERE id=$1",
       [id]
     );
 
@@ -36,12 +36,12 @@ exports.getUser = async (req, res) => {
 
     return res.json(result.rows[0]);
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
 /* =========================
-   UPDATE USER
+   UPDATE USER (INDEX ID)
 ========================= */
 exports.updateUser = async (req, res) => {
   try {
@@ -51,8 +51,8 @@ exports.updateUser = async (req, res) => {
     const result = await pool.query(
       `UPDATE users
        SET name=$1, email=$2
-       WHERE user_id=$3
-       RETURNING user_id, name, email`,
+       WHERE id=$3
+       RETURNING id, user_id, name, email`,
       [name, email, id]
     );
 
@@ -68,19 +68,19 @@ exports.updateUser = async (req, res) => {
       user: result.rows[0],
     });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
 /* =========================
-   DELETE USER
+   DELETE USER (INDEX ID)
 ========================= */
 exports.deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
 
     const result = await pool.query(
-      "DELETE FROM users WHERE user_id=$1 RETURNING user_id",
+      "DELETE FROM users WHERE id=$1 RETURNING id",
       [id]
     );
 
@@ -96,9 +96,10 @@ exports.deleteUser = async (req, res) => {
       message: "User deleted",
     });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
+
 
 /* =========================
    ADD FINGERPRINT

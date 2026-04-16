@@ -10,14 +10,14 @@ router.get("/test", (req, res) => {
 });
 
 // USERS
-router.get("/users", auth, userController.getUsers);
-router.get("/user/:id", auth, userController.getUser);
+router.get("/", auth, userController.getUsers);
+router.get("/:id", auth, userController.getUser);
 
 /* UPDATE */
-router.put("/user/:id", auth, userController.updateUser);
+router.put("/:id", auth, userController.updateUser);
 
 /* DELETE */
-router.delete("/user/:id", auth, userController.deleteUser);
+router.delete("/:id", auth, userController.deleteUser);
 
 // FINGERPRINT
 router.post("/add-finger", auth, userController.addFinger);
