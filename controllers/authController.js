@@ -16,7 +16,6 @@ const register = async (req, res) => {
       });
     }
 
-    // check existing user
     const check = await pool.query(
       "SELECT * FROM users WHERE email=$1",
       [email]
@@ -29,8 +28,8 @@ const register = async (req, res) => {
       });
     }
 
-    const userId = "USR" + Date.now();
-    const voterId = "VOTER" + Date.now() + Math.floor(Math.random() * 1000);
+    const user_id = "USR" + Date.now();
+    const voter_id = "VOTER" + Date.now();
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -41,8 +40,8 @@ const register = async (req, res) => {
         ($1,$2,$3,$4,$5,$6,$7,$8)
        RETURNING id, user_id, voter_id, name, email, gender, role`,
       [
-        userId,
-        voterId,
+        user_id,
+        voter_id,
         name,
         email,
         hashedPassword,
@@ -54,7 +53,6 @@ const register = async (req, res) => {
 
     return res.json({
       success: true,
-      message: "Registered successfully",
       user: result.rows[0],
     });
 
@@ -67,81 +65,53 @@ const register = async (req, res) => {
 };
 
 /* =========================
-   LOGIN
+   LOGIN (FULL FIXED)
 ========================= */
 const login = async (req, res) => {
   try {
-    const { email, password, voterId } = req.body;
+    const { email, password } = req.body;
 
-    let user;
+    const result = await pool.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email]
+    );
 
-    // 🔐 ADMIN LOGIN
-    if (password) {
-      const result = await pool.query(
-        "SELECT * FROM users WHERE email=$1",
-        [email]
-      );
-
-      if (result.rows.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      user = result.rows[0];
-
-      const match = await bcrypt.compare(password, user.password);
-
-      if (!match) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid password",
-        });
-      }
-    }
-
-    // 🗳️ VOTER LOGIN
-    else if (voterId && email) {
-      const result = await pool.query(
-        "SELECT * FROM users WHERE voter_id=$1 AND email=$2",
-        [voterId, email]
-      );
-
-      if (result.rows.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid voter credentials",
-        });
-      }
-
-      user = result.rows[0];
-    }
-
-    else {
+    if (result.rows.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Invalid login data",
+        message: "User not found",
       });
     }
 
-    // 🔐 JWT TOKEN
+    const user = result.rows[0];
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid password",
+      });
+    }
+
     const token = jwt.sign(
       {
+        id: user.id,
         userId: user.user_id,
+        role: user.role,
         email: user.email,
       },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    // ✅ FIX: ALWAYS INCLUDE DB PRIMARY ID
     return res.json({
       success: true,
       token,
+
       user: {
-        id: user.id,              // 🔥 IMPORTANT FIX (THIS FIXES YOUR /undefined ISSUE)
-        user_id: user.user_id,
+        id: user.id,                 // ✅ numeric DB id
+        user_id: user.user_id,       // ✅ your custom id
         voter_id: user.voter_id,
         name: user.name,
         email: user.email,
