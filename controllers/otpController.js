@@ -45,35 +45,11 @@ const sendOtp = async (req, res) => {
 
     // 4. Send Email (Resend)
     const emailResponse = await resend.emails.send({
-      from: "E-Voting <onboarding@resend.dev>",
-      to: email,
-      subject: "🔐 OTP Verification - E-Voting System",
-      html: `
-        <div style="font-family:Arial;background:#f4f6f9;padding:20px">
-          <div style="max-width:420px;margin:auto;background:#fff;padding:20px;border-radius:12px">
-
-            <h2 style="text-align:center">🗳️ E-Voting System</h2>
-
-            <p style="text-align:center">Your OTP Code</p>
-
-            <div style="text-align:center;margin:20px 0">
-              <span style="font-size:28px;font-weight:bold;letter-spacing:6px;color:#2ecc71">
-                ${otp}
-              </span>
-            </div>
-
-            <p style="text-align:center;font-size:14px">
-              Valid for <b>5 minutes</b>
-            </p>
-
-            <p style="text-align:center;font-size:12px;color:gray">
-              Do not share this OTP with anyone
-            </p>
-
-          </div>
-        </div>
-      `,
-    });
+  from: "E-Voting <support@coreberly.in>",
+  to: email,
+  subject: "🔐 OTP Verification - E-Voting System",
+  html: `<b>Your OTP is ${otp}</b>`,
+});
 
     console.log("📧 Email sent:", emailResponse);
 
