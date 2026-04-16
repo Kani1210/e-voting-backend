@@ -1,28 +1,22 @@
 const express = require("express");
 const router = express.Router();
-
 const userController = require("../controllers/userController");
-const auth = require("../middleware/authMiddleware");
+const auth = require("../middleware/auth"); // if using JWT
 
-/* =========================
-   TEST
-========================= */
-router.get("/test", (req, res) => {
-  res.json({ success: true, message: "User route working ✔" });
-});
+// USERS
+router.get("/users", userController.getUsers);
 
-/* =========================
-   USER
-========================= */
-router.get("/users", auth, userController.getUsers);
-router.get("/user/:id", auth, userController.getUser);
+// GET USER
+router.get("/users/:id", userController.getUser);
 
-/* =========================
-   FINGERPRINT
-========================= */
-router.post("/add-finger", auth, userController.addFinger);
+// ADD FINGERPRINT
+router.post("/users/add-finger", auth, userController.addFinger);
 
-// 👇 NEW ROUTE (IMPORTANT)
-router.get("/get-finger", auth, userController.getFingerTemplate);
+// ✅ THIS IS WHAT YOU ARE MISSING
+router.get(
+  "/users/get-finger",
+  auth,
+  userController.getFingerTemplate
+);
 
 module.exports = router;
