@@ -31,13 +31,27 @@ const sendOtp = async (req, res) => {
 
     const user = userResult.rows[0];
 
+    // IMPORTANT CHECK
+    if (!user.user_id) {
+      return res.status(500).json({
+        success: false,
+        message: "user_id missing in users table",
+      });
+    }
+
     // GENERATE OTP
     const otp = generateOTP();
 
-    // 10 min expiry
+    // 10 MIN EXPIRY
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // SAVE OTP (STRING user_id)
+    // DELETE OLD OTPs (optional but recommended)
+    await pool.query(
+      "DELETE FROM otp_verifications WHERE user_id=$1",
+      [user.user_id]
+    );
+
+    // INSERT OTP
     await pool.query(
       `INSERT INTO otp_verifications (user_id, otp, expires_at)
        VALUES ($1, $2, $3)`,
@@ -58,6 +72,8 @@ const sendOtp = async (req, res) => {
     });
 
   } catch (err) {
+    console.error("SEND OTP ERROR:", err);
+
     return res.status(500).json({
       success: false,
       error: err.message,
@@ -115,23 +131,21 @@ const verifyOtp = async (req, res) => {
 
     const record = otpResult.rows[0];
 
-    // MARK AS USED
+    // MARK USED
     await pool.query(
-      `UPDATE otp_verifications
-       SET is_used=true
-       WHERE id=$1`,
+      "UPDATE otp_verifications SET is_used=true WHERE id=$1",
       [record.id]
     );
 
     return res.json({
       success: true,
       message: "OTP verified successfully",
-
-      // frontend routing
-      user_id: user.user_id
+      user_id: user.user_id,
     });
 
   } catch (err) {
+    console.error("VERIFY OTP ERROR:", err);
+
     return res.status(500).json({
       success: false,
       error: err.message,
