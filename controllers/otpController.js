@@ -2,6 +2,9 @@ const pool = require("../db/db");
 const resend = require("../config/resend");
 const generateOTP = require("../utils/otp");
 
+/* =========================
+   SEND OTP
+========================= */
 const sendOtp = async (req, res) => {
   try {
     const { email } = req.body;
@@ -13,7 +16,7 @@ const sendOtp = async (req, res) => {
       });
     }
 
-    // 1. GET USER
+    // GET USER
     const userResult = await pool.query(
       "SELECT * FROM users WHERE email=$1",
       [email]
@@ -28,25 +31,25 @@ const sendOtp = async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // 2. GENERATE OTP
+    // GENERATE OTP
     const otp = generateOTP();
 
-    // 3. EXPIRE TIME (5 MIN)
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    // 10 min expiry
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // 4. INSERT OTP (IMPORTANT FIX)
+    // SAVE OTP (STRING user_id)
     await pool.query(
       `INSERT INTO otp_verifications (user_id, otp, expires_at)
        VALUES ($1, $2, $3)`,
-      [user.id, otp, expiresAt]   // ✅ INTEGER ONLY
+      [user.user_id, otp, expiresAt]
     );
 
-    // 5. SEND EMAIL
+    // SEND EMAIL
     await resend.emails.send({
       from: "E-Voting <support@coreberly.in>",
       to: email,
       subject: "OTP Verification",
-      html: `<b>Your OTP is ${otp}</b>`,
+      html: `<h2>Your OTP is ${otp}</h2>`,
     });
 
     return res.json({
@@ -61,6 +64,10 @@ const sendOtp = async (req, res) => {
     });
   }
 };
+
+/* =========================
+   VERIFY OTP
+========================= */
 const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -72,7 +79,7 @@ const verifyOtp = async (req, res) => {
       });
     }
 
-    // 1. GET USER
+    // GET USER
     const userResult = await pool.query(
       "SELECT * FROM users WHERE email=$1",
       [email]
@@ -87,7 +94,7 @@ const verifyOtp = async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // 2. CHECK OTP
+    // CHECK OTP
     const otpResult = await pool.query(
       `SELECT * FROM otp_verifications
        WHERE user_id=$1
@@ -96,7 +103,7 @@ const verifyOtp = async (req, res) => {
        AND expires_at > NOW()
        ORDER BY id DESC
        LIMIT 1`,
-      [user.id, otp]
+      [user.user_id, otp]
     );
 
     if (otpResult.rows.length === 0) {
@@ -108,9 +115,11 @@ const verifyOtp = async (req, res) => {
 
     const record = otpResult.rows[0];
 
-    // 3. MARK USED
+    // MARK AS USED
     await pool.query(
-      "UPDATE otp_verifications SET is_used=true WHERE id=$1",
+      `UPDATE otp_verifications
+       SET is_used=true
+       WHERE id=$1`,
       [record.id]
     );
 
@@ -118,7 +127,7 @@ const verifyOtp = async (req, res) => {
       success: true,
       message: "OTP verified successfully",
 
-      // ⚠ IMPORTANT: frontend routing uses string ID
+      // frontend routing
       user_id: user.user_id
     });
 
@@ -130,4 +139,7 @@ const verifyOtp = async (req, res) => {
   }
 };
 
-module.exports = { sendOtp, verifyOtp };
+module.exports = {
+  sendOtp,
+  verifyOtp,
+};
