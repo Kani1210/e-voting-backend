@@ -2,9 +2,6 @@ const pool = require("../db/db");
 const resend = require("../config/resend");
 const generateOTP = require("../utils/otp");
 
-/* =========================
-   SEND OTP
-========================= */
 const sendOtp = async (req, res) => {
   try {
     const { email } = req.body;
@@ -16,7 +13,7 @@ const sendOtp = async (req, res) => {
       });
     }
 
-    // 1. Check user
+    // 1. GET USER
     const userResult = await pool.query(
       "SELECT * FROM users WHERE email=$1",
       [email]
@@ -31,27 +28,26 @@ const sendOtp = async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // 2. Generate OTP
+    // 2. GENERATE OTP
     const otp = generateOTP();
 
-    // 3. Save OTP (5 min expiry)
+    // 3. EXPIRE TIME (5 MIN)
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
+    // 4. INSERT OTP (IMPORTANT FIX)
     await pool.query(
       `INSERT INTO otp_verifications (user_id, otp, expires_at)
        VALUES ($1, $2, $3)`,
-      [user.id, otp, expiresAt]
+      [user.id, otp, expiresAt]   // ✅ INTEGER ONLY
     );
 
-    // 4. Send Email (Resend)
-    const emailResponse = await resend.emails.send({
-  from: "E-Voting <support@coreberly.in>",
-  to: email,
-  subject: "🔐 OTP Verification - E-Voting System",
-  html: `<b>Your OTP is ${otp}</b>`,
-});
-
-    console.log("📧 Email sent:", emailResponse);
+    // 5. SEND EMAIL
+    await resend.emails.send({
+      from: "E-Voting <support@coreberly.in>",
+      to: email,
+      subject: "OTP Verification",
+      html: `<b>Your OTP is ${otp}</b>`,
+    });
 
     return res.json({
       success: true,
@@ -59,18 +55,12 @@ const sendOtp = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("OTP SEND ERROR:", err);
-
     return res.status(500).json({
       success: false,
       error: err.message,
     });
   }
 };
-
-/* =========================
-   VERIFY OTP
-========================= */
 const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -82,7 +72,7 @@ const verifyOtp = async (req, res) => {
       });
     }
 
-    // 1. Get user
+    // 1. GET USER
     const userResult = await pool.query(
       "SELECT * FROM users WHERE email=$1",
       [email]
@@ -97,7 +87,7 @@ const verifyOtp = async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // 2. Check OTP
+    // 2. CHECK OTP
     const otpResult = await pool.query(
       `SELECT * FROM otp_verifications
        WHERE user_id=$1
@@ -118,7 +108,7 @@ const verifyOtp = async (req, res) => {
 
     const record = otpResult.rows[0];
 
-    // 3. Mark as used
+    // 3. MARK USED
     await pool.query(
       "UPDATE otp_verifications SET is_used=true WHERE id=$1",
       [record.id]
@@ -127,7 +117,9 @@ const verifyOtp = async (req, res) => {
     return res.json({
       success: true,
       message: "OTP verified successfully",
-      user_id: user.id,
+
+      // ⚠ IMPORTANT: frontend routing uses string ID
+      user_id: user.user_id
     });
 
   } catch (err) {
@@ -138,7 +130,4 @@ const verifyOtp = async (req, res) => {
   }
 };
 
-module.exports = {
-  sendOtp,
-  verifyOtp,
-};
+module.exports = { sendOtp, verifyOtp };
