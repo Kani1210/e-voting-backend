@@ -10,7 +10,8 @@ exports.addIris = async (req, res) => {
       return res.status(400).json({ success: false, message: "No image" });
     }
 
-    const response = await fetch("https://iris-ai-vyiz.onrender.com/extract", {
+    // 🔥 CALL PYTHON AI
+    const response = await fetch("http://127.0.0.1:5001/extract", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -20,14 +21,15 @@ exports.addIris = async (req, res) => {
 
     const data = await response.json();
 
-    if (!data || !data.iris_vector) {
-      console.log("❌ Python error:", data);
+    if (!data.iris_vector) {
       return res.status(500).json({ success: false, error: "Python failed" });
     }
 
+    const irisVector = data.iris_vector;
+
     await pool.query(
       "UPDATE users SET iris_code = $1 WHERE user_id = $2",
-      [JSON.stringify(data.iris_vector), userId]
+      [JSON.stringify(irisVector), userId]
     );
 
     res.json({ success: true, message: "Iris Enrolled ✅" });
@@ -38,32 +40,23 @@ exports.addIris = async (req, res) => {
   }
 };
 
-/* ================= IMPROVED VECTOR MATCH ================= */
+/* ================= VERIFY ================= */
+
 function compareVectors(a, b) {
-  if (!a || !b || a.length !== b.length) return null;
-
-  let sum = 0;
-  const n = a.length;
-
-  for (let i = 0; i < n; i++) {
-    const diff = a[i] - b[i];
-    sum += diff * diff; // ✅ squared distance (better than abs)
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff += Math.abs(a[i] - b[i]);
   }
-
-  return Math.sqrt(sum); // Euclidean distance
+  return diff;
 }
 
-/* ================= VERIFY ================= */
 exports.verifyIris = async (req, res) => {
   try {
     const userId = req.user.userId;
     const { irisImage } = req.body;
 
-    if (!irisImage) {
-      return res.json({ verified: false, distance: null });
-    }
-
-    const response = await fetch("https://iris-ai-vyiz.onrender.com/extract", {
+    // 🔥 CALL PYTHON AI
+    const response = await fetch("http://127.0.0.1:5001/extract", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -72,10 +65,6 @@ exports.verifyIris = async (req, res) => {
     });
 
     const data = await response.json();
-
-    if (!data || !data.iris_vector) {
-      return res.json({ verified: false, distance: null });
-    }
 
     const liveVector = data.iris_vector;
 
@@ -92,23 +81,12 @@ exports.verifyIris = async (req, res) => {
 
     const distance = compareVectors(liveVector, storedVector);
 
-    if (distance === null) {
-      return res.json({ verified: false, distance: null });
-    }
+    const verified = distance < 5000; // adjust if needed
 
-    /* ================= THRESHOLD (IMPORTANT FIX) ================= */
-    const THRESHOLD = 3000; // 🔥 FIXED VALUE
-
-    const verified = distance < THRESHOLD;
-
-    res.json({
-      verified,
-      distance,
-      threshold: THRESHOLD
-    });
+    res.json({ verified, distance });
 
   } catch (err) {
     console.error("VERIFY ERROR:", err);
-    res.status(500).json({ verified: false, distance: null });
+    res.status(500).json({ verified: false });
   }
 };
