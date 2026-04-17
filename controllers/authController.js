@@ -59,6 +59,7 @@ const register = async (req, res) => {
     });
 
   } catch (err) {
+    console.error("REGISTER ERROR:", err);
     return res.status(500).json({
       success: false,
       error: err.message,
@@ -67,16 +68,25 @@ const register = async (req, res) => {
 };
 
 /* =========================
-   LOGIN
+   LOGIN (ADMIN + USER)
 ========================= */
 const login = async (req, res) => {
   try {
     const { email, password, voterId } = req.body;
 
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
     let user;
 
-    // 🔐 ADMIN LOGIN
-    if (password) {
+    /* =========================
+       ADMIN LOGIN (email + password)
+    ========================= */
+    if (password && !voterId) {
       const result = await pool.query(
         "SELECT * FROM users WHERE email=$1",
         [email]
@@ -91,6 +101,13 @@ const login = async (req, res) => {
 
       user = result.rows[0];
 
+      if (!user.password) {
+        return res.status(500).json({
+          success: false,
+          message: "Password missing in database",
+        });
+      }
+
       const match = await bcrypt.compare(password, user.password);
 
       if (!match) {
@@ -101,7 +118,9 @@ const login = async (req, res) => {
       }
     }
 
-    // 🗳️ VOTER LOGIN
+    /* =========================
+       USER LOGIN (voterId + email ONLY)
+    ========================= */
     else if (voterId && email) {
       const result = await pool.query(
         "SELECT * FROM users WHERE voter_id=$1 AND email=$2",
@@ -118,6 +137,9 @@ const login = async (req, res) => {
       user = result.rows[0];
     }
 
+    /* =========================
+       INVALID REQUEST
+    ========================= */
     else {
       return res.status(400).json({
         success: false,
@@ -125,10 +147,22 @@ const login = async (req, res) => {
       });
     }
 
-    // 🔐 JWT TOKEN
+    /* =========================
+       JWT CHECK
+    ========================= */
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({
+        success: false,
+        message: "JWT_SECRET missing in environment variables",
+      });
+    }
+
+    /* =========================
+       GENERATE TOKEN
+    ========================= */
     const token = jwt.sign(
       {
-          id: user.id,
+        id: user.id,
         userId: user.user_id,
         role: user.role,
         email: user.email,
@@ -137,12 +171,14 @@ const login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // ✅ FIX: ALWAYS INCLUDE DB PRIMARY ID
+    /* =========================
+       RESPONSE
+    ========================= */
     return res.json({
       success: true,
       token,
       user: {
-        id: user.id,              // 🔥 IMPORTANT FIX (THIS FIXES YOUR /undefined ISSUE)
+        id: user.id,
         user_id: user.user_id,
         voter_id: user.voter_id,
         name: user.name,
@@ -152,6 +188,7 @@ const login = async (req, res) => {
     });
 
   } catch (err) {
+    console.error("LOGIN ERROR:", err);
     return res.status(500).json({
       success: false,
       error: err.message,
