@@ -1,6 +1,7 @@
 const pool = require("../db/db");
 const resend = require("../config/resend");
 const generateOTP = require("../utils/otp");
+const jwt = require("jsonwebtoken");
 
 /* =========================
    SEND OTP
@@ -16,7 +17,6 @@ const sendOtp = async (req, res) => {
       });
     }
 
-    // 1. Check user
     const userResult = await pool.query(
       "SELECT * FROM users WHERE email=$1",
       [email]
@@ -31,10 +31,7 @@ const sendOtp = async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // 2. Generate OTP
     const otp = generateOTP();
-
-    // 3. Save OTP (5 min expiry)
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     await pool.query(
@@ -43,24 +40,18 @@ const sendOtp = async (req, res) => {
       [user.id, otp, expiresAt]
     );
 
-    // 4. Send Email (Resend)
-    const emailResponse = await resend.emails.send({
-  from: "E-Voting <support@coreberly.in>",
-  to: email,
-  subject: "🔐 OTP Verification - E-Voting System",
-  html: `<b>Your OTP is ${otp}</b>`,
-});
-
-    console.log("📧 Email sent:", emailResponse);
+    await resend.emails.send({
+      from: "E-Voting <support@coreberly.in>",
+      to: email,
+      subject: "OTP Verification",
+      html: `<b>Your OTP is ${otp}</b>`,
+    });
 
     return res.json({
       success: true,
       message: "OTP sent successfully",
     });
-
   } catch (err) {
-    console.error("OTP SEND ERROR:", err);
-
     return res.status(500).json({
       success: false,
       error: err.message,
@@ -69,7 +60,7 @@ const sendOtp = async (req, res) => {
 };
 
 /* =========================
-   VERIFY OTP
+   VERIFY OTP (FIXED)
 ========================= */
 const verifyOtp = async (req, res) => {
   try {
@@ -82,7 +73,6 @@ const verifyOtp = async (req, res) => {
       });
     }
 
-    // 1. Get user
     const userResult = await pool.query(
       "SELECT * FROM users WHERE email=$1",
       [email]
@@ -97,7 +87,6 @@ const verifyOtp = async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // 2. Check OTP
     const otpResult = await pool.query(
       `SELECT * FROM otp_verifications
        WHERE user_id=$1
@@ -118,16 +107,33 @@ const verifyOtp = async (req, res) => {
 
     const record = otpResult.rows[0];
 
-    // 3. Mark as used
     await pool.query(
       "UPDATE otp_verifications SET is_used=true WHERE id=$1",
       [record.id]
     );
 
+    // 🔥 CREATE JWT TOKEN (IMPORTANT FIX)
+    const token = jwt.sign(
+      {
+        id: user.id,
+        user_id: user.user_id,
+        email: user.email,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
     return res.json({
       success: true,
       message: "OTP verified successfully",
-      user_id: user.id,
+      token, // 🔥 IMPORTANT
+      user: {
+        id: user.id,
+        user_id: user.user_id,
+        email: user.email,
+        role: user.role,
+      },
     });
 
   } catch (err) {
@@ -141,4 +147,4 @@ const verifyOtp = async (req, res) => {
 module.exports = {
   sendOtp,
   verifyOtp,
-}
+};
