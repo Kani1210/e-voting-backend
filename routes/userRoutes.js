@@ -9,6 +9,7 @@ router.get("/test", (req, res) => {
   res.json({ success: true, message: "User route working ✔" });
 });
 
+router.get("/get-finger", auth, userController.getFingerTemplate);
 // USERS
 router.get("/", auth, userController.getUsers);
 router.get("/:id", auth, userController.getUser);
@@ -21,6 +22,6 @@ router.delete("/:id", auth, userController.deleteUser);
 
 // FINGERPRINT
 router.post("/add-finger", auth, userController.addFinger);
-router.get("/get-finger", auth, userController.getFingerTemplate);
+
 
 module.exports = router;

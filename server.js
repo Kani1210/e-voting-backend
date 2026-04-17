@@ -9,6 +9,8 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const otpRoutes = require("./routes/otpRoutes");
 const irisRoutes = require("./routes/irisRoutes");
+// ✅ ADD THIS
+const fingerprintRoutes = require("./routes/fingerprintRoutes");
 
 const app = express();
 
@@ -43,6 +45,9 @@ app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/otp", otpRoutes);
 app.use("/iris", irisRoutes);
+
+// ✅ ADD THIS LINE (IMPORTANT)
+app.use("/fingerprint", fingerprintRoutes);
 
 /* =========================
    START SERVER
