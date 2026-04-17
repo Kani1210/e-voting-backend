@@ -86,37 +86,37 @@ const login = async (req, res) => {
     /* =========================
        ADMIN LOGIN (email + password)
     ========================= */
-    if (password && !voterId) {
-      const result = await pool.query(
-        "SELECT * FROM users WHERE email=$1",
-        [email]
-      );
+   if (password && password.trim() !== "" && !voterId) {
+  const result = await pool.query(
+    "SELECT * FROM users WHERE email=$1",
+    [email]
+  );
 
-      if (result.rows.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "User not found",
-        });
-      }
+  if (result.rows.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "User not found",
+    });
+  }
 
-      user = result.rows[0];
+  user = result.rows[0];
 
-      if (!user.password) {
-        return res.status(500).json({
-          success: false,
-          message: "Password missing in database",
-        });
-      }
+  if (!user.password) {
+    return res.status(400).json({
+      success: false,
+      message: "Password missing in DB",
+    });
+  }
 
-      const match = await bcrypt.compare(password, user.password);
+  const match = await bcrypt.compare(password, user.password);
 
-      if (!match) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid password",
-        });
-      }
-    }
+  if (!match) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid password",
+    });
+  }
+}
 
     /* =========================
        USER LOGIN (voterId + email ONLY)
