@@ -4,24 +4,28 @@ const router = express.Router();
 const userController = require("../controllers/userController");
 const auth = require("../middleware/authMiddleware");
 
-// TEST
+/* TEST */
 router.get("/test", (req, res) => {
   res.json({ success: true, message: "User route working ✔" });
 });
 
-router.get("/get-finger", auth, userController.getFingerTemplate);
-// USERS
+/* =========================
+   USERS ROUTES
+========================= */
+
+// GET ALL USERS
 router.get("/", auth, userController.getUsers);
+
+// CREATE USER
+router.post("/", auth, userController.addUser);
+
+// GET USER BY ID
 router.get("/:id", auth, userController.getUser);
 
-/* UPDATE */
+// UPDATE USER
 router.put("/:id", auth, userController.updateUser);
 
-/* DELETE */
+// DELETE USER
 router.delete("/:id", auth, userController.deleteUser);
-
-// FINGERPRINT
-router.post("/add-finger", auth, userController.addFinger);
-
 
 module.exports = router;
