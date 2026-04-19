@@ -2,7 +2,7 @@ const pool = require("../db/db");
 
 exports.addFinger = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id; // ✅ numeric: 6, 7, 8...
     const { template } = req.body;
 
     if (!userId) {
@@ -25,20 +25,16 @@ exports.addFinger = async (req, res) => {
 
 exports.getFingerTemplate = async (req, res) => {
   try {
-    console.log("TOKEN USER:", req.user);
-
-    const userId = req.user?.user_id;
+    const userId = req.user?.id; // ✅ numeric: 6, 7, 8...
 
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     const result = await pool.query(
-      "SELECT finger_template FROM users WHERE user_id=$1",
+      "SELECT finger_template FROM users WHERE id=$1",
       [userId]
     );
-
-    console.log("DB RESULT:", result.rows);
 
     if (!result.rows.length || !result.rows[0].finger_template) {
       return res.status(404).json({
@@ -53,7 +49,6 @@ exports.getFingerTemplate = async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err);
     return res.status(500).json({ success: false, error: err.message });
   }
 };

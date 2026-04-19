@@ -11,32 +11,21 @@ const sendOtp = async (req, res) => {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is required",
-      });
+      return res.status(400).json({ success: false, message: "Email is required" });
     }
 
-    const userResult = await pool.query(
-      "SELECT * FROM users WHERE email=$1",
-      [email]
-    );
+    const userResult = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
 
     if (userResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     const user = userResult.rows[0];
-
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     await pool.query(
-      `INSERT INTO otp_verifications (user_id, otp, expires_at)
-       VALUES ($1, $2, $3)`,
+      `INSERT INTO otp_verifications (user_id, otp, expires_at) VALUES ($1, $2, $3)`,
       [user.id, otp, expiresAt]
     );
 
@@ -47,78 +36,51 @@ const sendOtp = async (req, res) => {
       html: `<b>Your OTP is ${otp}</b>`,
     });
 
-    return res.json({
-      success: true,
-      message: "OTP sent successfully",
-    });
+    return res.json({ success: true, message: "OTP sent successfully" });
+
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      error: err.message,
-    });
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
 
 /* =========================
-   VERIFY OTP (FIXED)
+   VERIFY OTP
 ========================= */
 const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and OTP required",
-      });
+      return res.status(400).json({ success: false, message: "Email and OTP required" });
     }
 
-    const userResult = await pool.query(
-      "SELECT * FROM users WHERE email=$1",
-      [email]
-    );
+    const userResult = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
 
     if (userResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     const user = userResult.rows[0];
 
     const otpResult = await pool.query(
       `SELECT * FROM otp_verifications
-       WHERE user_id=$1
-       AND otp=$2
-       AND is_used=false
-       AND expires_at > NOW()
-       ORDER BY id DESC
-       LIMIT 1`,
+       WHERE user_id=$1 AND otp=$2 AND is_used=false AND expires_at > NOW()
+       ORDER BY id DESC LIMIT 1`,
       [user.id, otp]
     );
 
     if (otpResult.rows.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or expired OTP",
-      });
+      return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
     }
 
-    const record = otpResult.rows[0];
+    await pool.query("UPDATE otp_verifications SET is_used=true WHERE id=$1", [otpResult.rows[0].id]);
 
-    await pool.query(
-      "UPDATE otp_verifications SET is_used=true WHERE id=$1",
-      [record.id]
-    );
-
-    // 🔥 CREATE JWT TOKEN (IMPORTANT FIX)
+    // ✅ Only sign numeric id — same id used in finger + iris controllers
     const token = jwt.sign(
       {
-        id: user.id,
-        user_id: user.user_id,
+        id:    user.id,    // numeric: 6, 7, 8... → req.user.id in ALL controllers
         email: user.email,
-        role: user.role,
+        role:  user.role,
       },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
@@ -127,24 +89,18 @@ const verifyOtp = async (req, res) => {
     return res.json({
       success: true,
       message: "OTP verified successfully",
-      token, // 🔥 IMPORTANT
+      token,
       user: {
-        id: user.id,
-        user_id: user.user_id,
-        email: user.email,
-        role: user.role,
+        id:      user.id,       // numeric id for route /user/6
+        user_id: user.user_id,  // USR... for display only
+        email:   user.email,
+        role:    user.role,
       },
     });
 
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      error: err.message,
-    });
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
 
-module.exports = {
-  sendOtp,
-  verifyOtp,
-};
+module.exports = { sendOtp, verifyOtp };
