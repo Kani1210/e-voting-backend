@@ -2,9 +2,8 @@ const pool = require("../db/db");
 const bcrypt = require("bcrypt");
 const resend = require("../config/resend");
 
-/* =========================
-   GET ALL USERS (ADMIN)
-========================= */
+
+// ================= ADMIN ONLY - GET ALL USERS =================
 exports.getUsers = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -19,49 +18,26 @@ exports.getUsers = async (req, res) => {
       ORDER BY id ASC
     `);
 
-    return res.json({ success: true, users: result.rows });
+    res.json({ success: true, users: result.rows });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
-/* =========================
-   ADD USER + SEND EMAIL
-========================= */
+
+
+// ================= ADMIN ONLY - ADD USER =================
 exports.addUser = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
       return res.status(403).json({ message: "Admin only" });
     }
 
-    const {
-      name,
-      email,
-      gender,
-      dob,
-      age,
-      phone,
-      address,
-      aadhar_no,
-      role,
-    } = req.body;
-
-    if (!name || !email || !gender) {
-      return res.status(400).json({ message: "Required fields missing" });
-    }
-
-    const check = await pool.query(
-      "SELECT * FROM users WHERE email=$1",
-      [email]
-    );
-
-    if (check.rows.length > 0) {
-      return res.status(400).json({ message: "Email exists" });
-    }
+    const { name, email, gender, dob, age, phone, address, aadhar_no, role } = req.body;
 
     const userId = "USR" + Date.now();
-    const voterId = "VOTER" + Date.now() + Math.floor(Math.random() * 1000);
+    const voterId = "VOTER" + Date.now();
 
     const password = "default123";
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -71,7 +47,7 @@ exports.addUser = async (req, res) => {
       (user_id, voter_id, name, email, password, gender,
        dob, age, phone, address, aadhar_no, status, role)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-      RETURNING id, user_id, voter_id, name, email, role`,
+      RETURNING *`,
       [
         userId,
         voterId,
@@ -79,47 +55,26 @@ exports.addUser = async (req, res) => {
         email,
         hashedPassword,
         gender,
-        dob || null,
-        age || null,
-        phone || null,
-        address || null,
-        aadhar_no || null,
+        dob,
+        age,
+        phone,
+        address,
+        aadhar_no,
         "active",
-        role || "voter",
+        role || "voter"
       ]
     );
 
-    const user = result.rows[0];
-
-    /* 🔥 SEND EMAIL */
-    await resend.emails.send({
-      from: "E-Voting <support@coreberly.in>",
-      to: email,
-      subject: "Your Voter Account Created",
-      html: `
-        <h3>Welcome ${name}</h3>
-        <p>Your account is created successfully.</p>
-        <p><b>Voter ID:</b> ${voterId}</p>
-        <p><b>Email:</b> ${email}</p>
-        <p><b>Password:</b> ${password}</p>
-      `,
-    });
-
-    return res.json({
-      success: true,
-      message: "User created & email sent",
-      user,
-    });
+    res.json({ success: true, user: result.rows[0] });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
 
-/* =========================
-   GET SINGLE USER
-========================= */
+
+// ================= ADMIN ONLY - GET USER BY ID =================
 exports.getUser = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -129,31 +84,20 @@ exports.getUser = async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      `SELECT 
-        id, user_id, voter_id, name, email,
-        gender, dob, age, phone, address, aadhar_no,
-        status, role, created_at
-       FROM users
-       WHERE id=$1`,
+      `SELECT * FROM users WHERE id=$1`,
       [id]
     );
 
-    if (!result.rows.length) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    res.json({ success: true, user: result.rows[0] });
 
-    return res.json({
-      success: true,
-      user: result.rows[0],
-    });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
-/* =========================
-   UPDATE USER (FULL)
-========================= */
+
+
+// ================= ADMIN ONLY - UPDATE USER =================
 exports.updateUser = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -161,64 +105,31 @@ exports.updateUser = async (req, res) => {
     }
 
     const { id } = req.params;
-
-    const {
-      name,
-      email,
-      gender,
-      dob,
-      age,
-      phone,
-      address,
-      aadhar_no,
-      role,
-      status,
-    } = req.body;
+    const { name, email, phone, address, status, role } = req.body;
 
     const result = await pool.query(
       `UPDATE users SET
         name = COALESCE($1, name),
         email = COALESCE($2, email),
-        gender = COALESCE($3, gender),
-        dob = COALESCE($4, dob),
-        age = COALESCE($5, age),
-        phone = COALESCE($6, phone),
-        address = COALESCE($7, address),
-        aadhar_no = COALESCE($8, aadhar_no),
-        role = COALESCE($9, role),
-        status = COALESCE($10, status),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id=$11
-      RETURNING id, name, email, role`,
-      [
-        name,
-        email,
-        gender,
-        dob,
-        age,
-        phone,
-        address,
-        aadhar_no,
-        role,
-        status,
-        id,
-      ]
+        phone = COALESCE($3, phone),
+        address = COALESCE($4, address),
+        status = COALESCE($5, status),
+        role = COALESCE($6, role)
+       WHERE id=$7
+       RETURNING *`,
+      [name, email, phone, address, status, role, id]
     );
 
-    return res.json({
-      success: true,
-      message: "User updated",
-      user: result.rows[0],
-    });
+    res.json({ success: true, user: result.rows[0] });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
-/* =========================
-   DELETE USER
-========================= */
+
+
+// ================= ADMIN ONLY - DELETE USER =================
 exports.deleteUser = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -229,43 +140,29 @@ exports.deleteUser = async (req, res) => {
 
     await pool.query("DELETE FROM users WHERE id=$1", [id]);
 
-    return res.json({
-      success: true,
-      message: "User deleted",
-    });
+    res.json({ success: true, message: "Deleted" });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
-/* =========================
-   GET LOGGED-IN USER PROFILE
-========================= */
+
+
+// ================= BOTH USER + ADMIN - MY PROFILE =================
 exports.getMyProfile = async (req, res) => {
   try {
-    const userId = req.user.user_id || req.user.id;
+    const id = req.user.id;
 
     const result = await pool.query(
-      `SELECT 
-        id, user_id, voter_id, name, email,
-        phone, gender, dob, age, address,
-        aadhar_no, status, role, created_at
-       FROM users
-       WHERE user_id=$1`,
-      [userId]
+      `SELECT id, user_id, voter_id, name, email, phone, gender, address, role, status
+       FROM users WHERE id=$1`,
+      [id]
     );
 
-    if (!result.rows.length) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-
-    return res.json({
-      success: true,
-      user: result.rows[0],
-    });
+    res.json({ success: true, user: result.rows[0] });
 
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
