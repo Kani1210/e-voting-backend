@@ -60,7 +60,7 @@ const sendOtp = async (req, res) => {
 };
 
 /* =========================
-   VERIFY OTP
+   VERIFY OTP (FIXED)
 ========================= */
 const verifyOtp = async (req, res) => {
   try {
@@ -112,13 +112,13 @@ const verifyOtp = async (req, res) => {
       [record.id]
     );
 
-    // ✅ FIXED: userId (not user_id) — matches req.user.userId in irisController
+    // 🔥 CREATE JWT TOKEN (IMPORTANT FIX)
     const token = jwt.sign(
       {
-        id:     user.id,
-        userId: user.user_id,  // ← this is the only change
-        email:  user.email,
-        role:   user.role,
+        id: user.id,
+        user_id: user.user_id,
+        email: user.email,
+        role: user.role,
       },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
@@ -127,12 +127,12 @@ const verifyOtp = async (req, res) => {
     return res.json({
       success: true,
       message: "OTP verified successfully",
-      token,
+      token, // 🔥 IMPORTANT
       user: {
-        id:       user.id,
-        user_id:  user.user_id,
-        email:    user.email,
-        role:     user.role,
+        id: user.id,
+        user_id: user.user_id,
+        email: user.email,
+        role: user.role,
       },
     });
 
