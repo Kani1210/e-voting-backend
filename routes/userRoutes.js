@@ -4,8 +4,9 @@ const router = express.Router();
 const userController = require("../controllers/userController");
 const auth = require("../middleware/authMiddleware");
 
-
-/* TEST */
+/* =========================
+   TEST ROUTE
+========================= */
 router.get("/test", (req, res) => {
   res.json({ success: true, message: "User route working ✔" });
 });
@@ -15,23 +16,22 @@ router.get("/test", (req, res) => {
    USERS ROUTES
 ========================= */
 
-// GET ALL USERS (ADMIN)
+// GET ALL USERS
 router.get("/", auth, userController.getUsers);
 
-// CREATE USER (ADMIN)
+// CREATE USER
 router.post("/", auth, userController.addUser);
 
-// 🔥 IMPORTANT: PUT /me BEFORE /:id
 // GET MY PROFILE (USER + ADMIN)
 router.get("/me", auth, userController.getMyProfile);
 
-// GET USER BY ID (ADMIN)
+// GET USER BY ID
 router.get("/:id", auth, userController.getUser);
 
-// UPDATE USER (ADMIN)
+// UPDATE USER
 router.put("/:id", auth, userController.updateUser);
 
-// DELETE USER (ADMIN)
+// DELETE USER
 router.delete("/:id", auth, userController.deleteUser);
 
 module.exports = router;

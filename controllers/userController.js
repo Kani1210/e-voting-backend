@@ -3,13 +3,9 @@ const bcrypt = require("bcrypt");
 const resend = require("../config/resend");
 
 
-// ================= ADMIN ONLY - GET ALL USERS =================
+// ================= GET ALL USERS (PUBLIC / LOGGED USER) =================
 exports.getUsers = async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin only" });
-    }
-
     const result = await pool.query(`
       SELECT id, user_id, voter_id, name, email,
       gender, dob, age, phone, address, aadhar_no,
@@ -27,13 +23,9 @@ exports.getUsers = async (req, res) => {
 
 
 
-// ================= ADMIN ONLY - ADD USER =================
+// ================= ADD USER =================
 exports.addUser = async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin only" });
-    }
-
     const { name, email, gender, dob, age, phone, address, aadhar_no, role } = req.body;
 
     const userId = "USR" + Date.now();
@@ -74,13 +66,9 @@ exports.addUser = async (req, res) => {
 
 
 
-// ================= ADMIN ONLY - GET USER BY ID =================
+// ================= GET USER BY ID =================
 exports.getUser = async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin only" });
-    }
-
     const { id } = req.params;
 
     const result = await pool.query(
@@ -97,13 +85,9 @@ exports.getUser = async (req, res) => {
 
 
 
-// ================= ADMIN ONLY - UPDATE USER =================
+// ================= UPDATE USER =================
 exports.updateUser = async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin only" });
-    }
-
     const { id } = req.params;
     const { name, email, phone, address, status, role } = req.body;
 
@@ -129,13 +113,9 @@ exports.updateUser = async (req, res) => {
 
 
 
-// ================= ADMIN ONLY - DELETE USER =================
+// ================= DELETE USER =================
 exports.deleteUser = async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin only" });
-    }
-
     const { id } = req.params;
 
     await pool.query("DELETE FROM users WHERE id=$1", [id]);
@@ -149,7 +129,7 @@ exports.deleteUser = async (req, res) => {
 
 
 
-// ================= BOTH USER + ADMIN - MY PROFILE =================
+// ================= MY PROFILE =================
 exports.getMyProfile = async (req, res) => {
   try {
     const userId = req.user.id || req.user.user_id;
