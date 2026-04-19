@@ -238,3 +238,34 @@ exports.deleteUser = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+
+/* =========================
+   GET LOGGED-IN USER PROFILE
+========================= */
+exports.getMyProfile = async (req, res) => {
+  try {
+    const userId = req.user.id; // from token
+
+    const result = await pool.query(
+      `SELECT 
+        id, user_id, voter_id, name, email,
+        gender, dob, age, phone, address, aadhar_no,
+        status, role, created_at
+       FROM users
+       WHERE id=$1`,
+      [userId]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json({
+      success: true,
+      user: result.rows[0],
+    });
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
