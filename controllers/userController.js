@@ -152,17 +152,25 @@ exports.deleteUser = async (req, res) => {
 // ================= BOTH USER + ADMIN - MY PROFILE =================
 exports.getMyProfile = async (req, res) => {
   try {
-    const id = req.user.id;
+    const userId = req.user.id || req.user.user_id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Invalid token data" });
+    }
 
     const result = await pool.query(
-      `SELECT id, user_id, voter_id, name, email, phone, gender, address, role, status
+      `SELECT id, user_id, voter_id, name, email, phone, gender, dob, age, address, aadhar_no, role, status
        FROM users WHERE id=$1`,
-      [id]
+      [userId]
     );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
 
     res.json({ success: true, user: result.rows[0] });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 };
