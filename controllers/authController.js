@@ -7,7 +7,10 @@ const jwt = require("jsonwebtoken");
 ========================= */
 const register = async (req, res) => {
   try {
-    const { name, email, password, gender } = req.body;
+    const name = String(req.body.name || "").trim();
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+    const gender = String(req.body.gender || "").trim();
 
     if (!name || !email || !password || !gender) {
       return res.status(400).json({
@@ -72,7 +75,9 @@ const register = async (req, res) => {
 ========================= */
 const login = async (req, res) => {
   try {
-    const { email, password, voterId } = req.body;
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+    const voterId = String(req.body.voterId || "").trim();
 
     if (!email) {
       return res.status(400).json({
@@ -86,42 +91,49 @@ const login = async (req, res) => {
     /* =========================
        ADMIN LOGIN (email + password)
     ========================= */
-   if (password && password.trim() !== "" && !voterId) {
-  const result = await pool.query(
-    "SELECT * FROM users WHERE email=$1",
-    [email]
-  );
+    if (password && password.trim() !== "" && !voterId) {
+      const result = await pool.query(
+        "SELECT * FROM users WHERE email=$1",
+        [email]
+      );
 
-  if (result.rows.length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: "User not found",
-    });
-  }
+      if (result.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "User not found",
+        });
+      }
 
-  user = result.rows[0];
+      user = result.rows[0];
 
-  if (!user.password) {
-    return res.status(400).json({
-      success: false,
-      message: "Password missing in DB",
-    });
-  }
+      if (user.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized login method",
+        });
+      }
 
-  const match = await bcrypt.compare(password, user.password);
+      if (!user.password) {
+        return res.status(400).json({
+          success: false,
+          message: "Password missing in DB",
+        });
+      }
 
-  if (!match) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid password",
-    });
-  }
-}
+      const match = await bcrypt.compare(password, user.password);
+
+      if (!match) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid password",
+        });
+      }
+    }
 
     /* =========================
        USER LOGIN (voterId + email ONLY)
     ========================= */
-    else if (voterId && email) {
+    else if (voterId) {
       const result = await pool.query(
         "SELECT * FROM users WHERE voter_id=$1 AND email=$2",
         [voterId, email]
@@ -144,6 +156,13 @@ const login = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Invalid login data",
+      });
+    }
+
+    if (user.status !== "active") {
+      return res.status(403).json({
+        success: false,
+        message: "Account is not active",
       });
     }
 
