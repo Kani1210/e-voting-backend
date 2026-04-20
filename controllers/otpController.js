@@ -6,29 +6,55 @@ const jwt = require("jsonwebtoken");
 /* =========================
    SEND OTP
 ========================= */
+/* =========================
+   SEND OTP (WITH LOCK CHECK)
+========================= */
 const sendOtp = async (req, res) => {
   try {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ success: false, message: "Email is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
     }
 
-    const userResult = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
+    // ✅ Get required user fields only
+    const userResult = await pool.query(
+      "SELECT id, email, is_locked, has_voted FROM users WHERE email=$1",
+      [email]
+    );
 
     if (userResult.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
     const user = userResult.rows[0];
+
+    // 🔒 BLOCK OTP IF USER IS LOCKED
+    if (user.is_locked) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account is locked. You have already voted.",
+        isLocked: true,
+      });
+    }
+
+    // ✅ Generate OTP
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     await pool.query(
-      `INSERT INTO otp_verifications (user_id, otp, expires_at) VALUES ($1, $2, $3)`,
+      `INSERT INTO otp_verifications (user_id, otp, expires_at)
+       VALUES ($1, $2, $3)`,
       [user.id, otp, expiresAt]
     );
 
+    // ✅ Send OTP email
     await resend.emails.send({
       from: "E-Voting <support@coreberly.in>",
       to: email,
@@ -36,10 +62,17 @@ const sendOtp = async (req, res) => {
       html: `<b>Your OTP is ${otp}</b>`,
     });
 
-    return res.json({ success: true, message: "OTP sent successfully" });
+    return res.json({
+      success: true,
+      message: "OTP sent successfully",
+    });
 
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    console.error("Send OTP Error:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
 
