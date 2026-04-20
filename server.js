@@ -9,6 +9,7 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const otpRoutes = require("./routes/otpRoutes");
 const irisRoutes = require("./routes/irisRoutes");
+const voteRoutes = require("./routes/voteRoutes");
 // ✅ ADD THIS
 const fingerprintRoutes = require("./routes/fingerprintRoutes");
 
@@ -45,6 +46,7 @@ app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/otp", otpRoutes);
 app.use("/iris", irisRoutes);
+app.use("/vote", voteRoutes);
 
 // ✅ ADD THIS LINE (IMPORTANT)
 app.use("/fingerprint", fingerprintRoutes);
