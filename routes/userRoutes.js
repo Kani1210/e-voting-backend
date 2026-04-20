@@ -34,4 +34,7 @@ router.put("/:id", auth, userController.updateUser);
 // DELETE USER
 router.delete("/:id", auth, userController.deleteUser);
 
+// UNLOCK USER (COMMON)
+router.put("/unlock/:id", auth, userController.unlockUser);
+
 module.exports = router;
