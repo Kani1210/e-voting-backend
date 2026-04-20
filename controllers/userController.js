@@ -154,3 +154,43 @@ exports.getMyProfile = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
+
+// ================= UPDATE ONLY VOTING FLAGS =================
+exports.unlockUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `UPDATE users
+       SET
+         has_voted = FALSE,
+         voted_at  = '2026-04-20 14:58:16.623195',
+         is_locked = FALSE
+       WHERE id = $1
+       RETURNING id, name, has_voted, voted_at, is_locked`,
+      [id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Voting flags updated successfully",
+      user: result.rows[0],
+    });
+
+  } catch (err) {
+    console.error("Update Voting Flags Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+``
