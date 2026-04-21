@@ -58,8 +58,44 @@ const sendOtp = async (req, res) => {
     await resend.emails.send({
       from: "E-Voting <support@coreberly.in>",
       to: email,
-      subject: "OTP Verification",
-      html: `<b>Your OTP is ${otp}</b>`,
+      subject: "OTP Verification - E-Voting",
+      html: `
+  <div style="font-family: Arial, sans-serif; background-color:#f4f6f8; padding:40px;">
+    
+    <div style="max-width:600px; margin:auto; background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+      
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#4f46e5,#3b82f6); color:#fff; padding:20px; text-align:center;">
+        <h2 style="margin:0;">🗳️ E-Voting System</h2>
+        <p style="margin:5px 0 0;">Secure Login Verification</p>
+      </div>
+
+      <!-- Body -->
+      <div style="padding:30px; text-align:center;">
+        <h3 style="margin-top:0;">OTP Verification 🔐</h3>
+        <p>Use the following One-Time Password to continue:</p>
+
+        <!-- OTP BOX -->
+        <div style="font-size:32px; font-weight:bold; letter-spacing:6px; background:#f1f5f9; padding:15px 25px; display:inline-block; border-radius:8px; margin:20px 0; color:#1e293b;">
+          ${otp}
+        </div>
+
+        <p style="color:#64748b;">This OTP is valid for <b>5 minutes</b>.</p>
+
+        <p style="margin-top:20px;">
+          ⚠️ Do not share this OTP with anyone for security reasons.
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div style="background:#f1f5f9; padding:15px; text-align:center; font-size:12px; color:#64748b;">
+        <p style="margin:0;">© 2026 E-Voting System</p>
+        <p style="margin:0;">Secure • Transparent • Reliable</p>
+      </div>
+
+    </div>
+  </div>
+  `,
     });
 
     return res.json({
@@ -111,9 +147,9 @@ const verifyOtp = async (req, res) => {
     // ✅ Only sign numeric id — same id used in finger + iris controllers
     const token = jwt.sign(
       {
-        id:    user.id,    // numeric: 6, 7, 8... → req.user.id in ALL controllers
+        id: user.id,    // numeric: 6, 7, 8... → req.user.id in ALL controllers
         email: user.email,
-        role:  user.role,
+        role: user.role,
       },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
@@ -124,10 +160,10 @@ const verifyOtp = async (req, res) => {
       message: "OTP verified successfully",
       token,
       user: {
-        id:      user.id,       // numeric id for route /user/6
+        id: user.id,       // numeric id for route /user/6
         user_id: user.user_id,  // USR... for display only
-        email:   user.email,
-        role:    user.role,
+        email: user.email,
+        role: user.role,
       },
     });
 

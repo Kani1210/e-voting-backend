@@ -27,11 +27,22 @@ exports.getUsers = async (req, res) => {
 // ================= ADD USER =================
 exports.addUser = async (req, res) => {
   try {
-    const { name, email, gender, dob, age, phone, address, aadhar_no, role } = req.body;
+    const {
+      name,
+      email,
+      gender,
+      dob,
+      age,
+      phone,
+      address,
+      aadhar_no,
+      role,
+    } = req.body;
 
     const userId = "USR" + Date.now();
     const voterId = "VOTER" + Date.now();
 
+    // ✅ still required for DB (but not shared)
     const password = "default123";
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -54,41 +65,67 @@ exports.addUser = async (req, res) => {
         address,
         aadhar_no,
         "active",
-        role || "voter"
+        role || "voter",
       ]
     );
 
     const user = result.rows[0];
 
+    console.log("User created:", email);
+
     /* =========================
-       SEND EMAIL AFTER REGISTER
+       SEND CLEAN EMAIL
     ========================= */
-    await resend.emails.send({
+    const emailResponse = await resend.emails.send({
       from: "E-Voting <support@coreberly.in>",
       to: email,
       subject: "Voter Registration Successful",
       html: `
-        <h2>Welcome to E-Voting System</h2>
-        <p>Hi <b>${name}</b>,</p>
+      <div style="font-family: Arial, sans-serif; background-color:#f4f6f8; padding:40px;">
+        
+        <div style="max-width:600px; margin:auto; background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <div style="background:linear-gradient(135deg,#4f46e5,#3b82f6); color:#fff; padding:20px; text-align:center;">
+            <h2 style="margin:0;">🗳️ E-Voting System</h2>
+            <p style="margin:5px 0 0;">Secure Digital Voting</p>
+          </div>
 
-        <p>Your registration has been successfully completed.</p>
+          <!-- Body -->
+          <div style="padding:30px;">
+            <h3 style="margin-top:0;">Welcome, ${name} 👋</h3>
+            <p>Your voter registration has been successfully completed.</p>
 
-        <h3>Your Details:</h3>
-        <ul>
-          <li><b>Name:</b> ${name}</li>
-          <li><b>Email:</b> ${email}</li>
-          <li><b>Voter ID:</b> ${voterId}</li>
-          <li><b>User ID:</b> ${userId}</li>
-        </ul>
+            <div style="background:#f9fafb; padding:20px; border-radius:8px; margin:20px 0;">
+              <p><b>👤 Name:</b> ${name}</p>
+              <p><b>📧 Email:</b> ${email}</p>
+              <p><b>🆔 Voter ID:</b> <span style="color:#3b82f6;">${voterId}</span></p>
+            </div>
 
-        <p><b>Default Password:</b> ${password}</p>
+            <p style="margin-top:20px;">
+              You can now securely log in using OTP verification.
+            </p>
 
-        <p>Please login and change your password immediately.</p>
+            <div style="text-align:center; margin:30px 0;">
+              <a href="http://localhost:3000/login"
+                 style="background:#4f46e5; color:#fff; padding:12px 25px; text-decoration:none; border-radius:6px; font-weight:bold;">
+                 Login with OTP
+              </a>
+            </div>
+          </div>
 
-        <br/>
-        <p>Thank you,<br/>E-Voting Team</p>
+          <!-- Footer -->
+          <div style="background:#f1f5f9; padding:15px; text-align:center; font-size:12px; color:#64748b;">
+            <p style="margin:0;">© 2026 E-Voting System</p>
+            <p style="margin:0;">Secure • Transparent • Reliable</p>
+          </div>
+
+        </div>
+      </div>
       `,
     });
+
+    console.log("Email sent:", emailResponse);
 
     res.json({
       success: true,
@@ -105,7 +142,6 @@ exports.addUser = async (req, res) => {
     });
   }
 };
-
 
 // ================= GET USER BY ID =================
 exports.getUser = async (req, res) => {
