@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const resend = require("../config/resend");
 
 
+
 // ================= GET ALL USERS (PUBLIC / LOGGED USER) =================
 exports.getUsers = async (req, res) => {
   try {
@@ -57,13 +58,53 @@ exports.addUser = async (req, res) => {
       ]
     );
 
-    res.json({ success: true, user: result.rows[0] });
+    const user = result.rows[0];
+
+    /* =========================
+       SEND EMAIL AFTER REGISTER
+    ========================= */
+    await resend.emails.send({
+      from: "E-Voting <support@coreberly.in>",
+      to: email,
+      subject: "Voter Registration Successful",
+      html: `
+        <h2>Welcome to E-Voting System</h2>
+        <p>Hi <b>${name}</b>,</p>
+
+        <p>Your registration has been successfully completed.</p>
+
+        <h3>Your Details:</h3>
+        <ul>
+          <li><b>Name:</b> ${name}</li>
+          <li><b>Email:</b> ${email}</li>
+          <li><b>Voter ID:</b> ${voterId}</li>
+          <li><b>User ID:</b> ${userId}</li>
+        </ul>
+
+        <p><b>Default Password:</b> ${password}</p>
+
+        <p>Please login and change your password immediately.</p>
+
+        <br/>
+        <p>Thank you,<br/>E-Voting Team</p>
+      `,
+    });
+
+    res.json({
+      success: true,
+      message: "User created & email sent",
+      user,
+    });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Add User Error:", err);
+
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
-
 
 
 // ================= GET USER BY ID =================
