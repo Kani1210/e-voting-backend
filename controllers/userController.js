@@ -105,13 +105,6 @@ exports.addUser = async (req, res) => {
             <p style="margin-top:20px;">
               You can now securely log in using OTP verification.
             </p>
-
-            <div style="text-align:center; margin:30px 0;">
-              <a href="http://localhost:3000/login"
-                 style="background:#4f46e5; color:#fff; padding:12px 25px; text-decoration:none; border-radius:6px; font-weight:bold;">
-                 Login with OTP
-              </a>
-            </div>
           </div>
 
           <!-- Footer -->
