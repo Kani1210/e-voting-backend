@@ -73,6 +73,9 @@ const register = async (req, res) => {
 /* =========================
    LOGIN (ADMIN + USER)
 ========================= */
+/* =========================
+   LOGIN (ADMIN + USER)
+========================= */
 const login = async (req, res) => {
   try {
     const email = String(req.body.email || "").trim().toLowerCase();
@@ -80,119 +83,70 @@ const login = async (req, res) => {
     const voterId = String(req.body.voterId || "").trim();
 
     if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is required",
-      });
+      return res.status(400).json({ success: false, message: "Email is required" });
     }
 
     let user;
 
-    /* =========================
-       ADMIN LOGIN (email + password)
-    ========================= */
+    /* ADMIN LOGIN */
     if (password && password.trim() !== "" && !voterId) {
-      const result = await pool.query(
-        "SELECT * FROM users WHERE email=$1",
-        [email]
-      );
-
-      if (result.rows.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "User not found",
-        });
-      }
+      const result = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
+      if (result.rows.length === 0)
+        return res.status(400).json({ success: false, message: "User not found" });
 
       user = result.rows[0];
 
-      if (user.role !== "admin") {
-        return res.status(403).json({
-          success: false,
-          message: "Unauthorized login method",
-        });
-      }
+      if (user.role !== "admin")
+        return res.status(403).json({ success: false, message: "Unauthorized login method" });
 
-      if (!user.password) {
-        return res.status(400).json({
-          success: false,
-          message: "Password missing in DB",
-        });
-      }
+      if (!user.password)
+        return res.status(400).json({ success: false, message: "Password missing in DB" });
 
       const match = await bcrypt.compare(password, user.password);
-
-      if (!match) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid password",
-        });
-      }
+      if (!match)
+        return res.status(400).json({ success: false, message: "Invalid password" });
     }
 
-    /* =========================
-       USER LOGIN (voterId + email ONLY)
-    ========================= */
+    /* VOTER LOGIN — voterId + email must match */
     else if (voterId) {
       const result = await pool.query(
         "SELECT * FROM users WHERE voter_id=$1 AND email=$2",
         [voterId, email]
       );
 
-      if (result.rows.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid voter credentials",
-        });
-      }
+      if (result.rows.length === 0)
+        return res.status(400).json({ success: false, message: "Invalid voter credentials" });
 
       user = result.rows[0];
+
+      // 🔒 Check if account is locked (already voted)
+      if (user.status === "locked") {
+        return res.status(403).json({
+          success: false,
+          isLocked: true,
+          message: "Account is locked. You have already voted.",
+        });
+      }
     }
 
-    /* =========================
-       INVALID REQUEST
-    ========================= */
     else {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid login data",
-      });
+      return res.status(400).json({ success: false, message: "Invalid login data" });
     }
 
     if (user.status !== "active") {
-      return res.status(403).json({
-        success: false,
-        message: "Account is not active",
-      });
+      return res.status(403).json({ success: false, message: "Account is not active" });
     }
 
-    /* =========================
-       JWT CHECK
-    ========================= */
     if (!process.env.JWT_SECRET) {
-      return res.status(500).json({
-        success: false,
-        message: "JWT_SECRET missing in environment variables",
-      });
+      return res.status(500).json({ success: false, message: "JWT_SECRET missing" });
     }
 
-    /* =========================
-       GENERATE TOKEN
-    ========================= */
     const token = jwt.sign(
-      {
-        id: user.id,
-        userId: user.user_id,
-        role: user.role,
-        email: user.email,
-      },
+      { id: user.id, userId: user.user_id, role: user.role, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    /* =========================
-       RESPONSE
-    ========================= */
     return res.json({
       success: true,
       token,
@@ -208,10 +162,7 @@ const login = async (req, res) => {
 
   } catch (err) {
     console.error("LOGIN ERROR:", err);
-    return res.status(500).json({
-      success: false,
-      error: err.message,
-    });
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
 
